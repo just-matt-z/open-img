@@ -10,6 +10,7 @@ public partial class ExportDialog : Window
     public string Format { get; private set; } = "PNG";
     public double Scale { get; private set; } = 1.0;
     public int Quality { get; private set; } = 92;
+    public bool IsIconPack { get; private set; } = false;
 
     public ExportDialog(double width, double height)
     {
@@ -17,6 +18,15 @@ public partial class ExportDialog : Window
         _origWidth = width;
         _origHeight = height;
         UpdateDimensions();
+    }
+
+    private void ExportMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (StandardExportPanel == null || IconPackPanel == null) return;
+        IsIconPack = RbIconPackExport?.IsChecked == true;
+        StandardExportPanel.Visibility = IsIconPack ? Visibility.Collapsed : Visibility.Visible;
+        IconPackPanel.Visibility = IsIconPack ? Visibility.Visible : Visibility.Collapsed;
+        BtnExport.Content = IsIconPack ? "Generate Icon Pack" : "Export Image";
     }
 
     private void Format_Changed(object sender, RoutedEventArgs e)
@@ -32,6 +42,11 @@ public partial class ExportDialog : Window
             Format = "BMP";
             QualityPanel.Visibility = Visibility.Collapsed;
         }
+        else if (RbTiff?.IsChecked == true)
+        {
+            Format = "TIFF";
+            QualityPanel.Visibility = Visibility.Collapsed;
+        }
         else
         {
             Format = "PNG";
@@ -43,6 +58,7 @@ public partial class ExportDialog : Window
     {
         if (RbScaleHalf?.IsChecked == true) Scale = 0.5;
         else if (RbScale2?.IsChecked == true) Scale = 2.0;
+        else if (RbScale3?.IsChecked == true) Scale = 3.0;
         else Scale = 1.0;
         UpdateDimensions();
     }

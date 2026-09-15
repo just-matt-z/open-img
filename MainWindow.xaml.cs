@@ -148,10 +148,10 @@ public partial class MainWindow : Window
 
         _activeLayer = _layers[0];
         LayersListBox.SelectedItem = _activeLayer;
-
-        _history.PushState("Initial Artwork", _canvasWidth, _canvasHeight, _layers, _adjustments);
-        UpdateHistoryButtons();
         RenderComposite();
+        var initialThumb = CreateCanvasThumbnail();
+        _history.PushState("Initial Artwork", _canvasWidth, _canvasHeight, _layers, _adjustments, initialThumb);
+        UpdateHistoryButtons();
     }
 
     private void CreateFallbackGradientLayer()
@@ -547,9 +547,31 @@ public partial class MainWindow : Window
 
     private void CommitAction(string description)
     {
-        _history.PushState(description, _canvasWidth, _canvasHeight, _layers, _adjustments);
-        UpdateHistoryButtons();
         RenderComposite();
+        var thumb = CreateCanvasThumbnail();
+        _history.PushState(description, _canvasWidth, _canvasHeight, _layers, _adjustments, thumb);
+        UpdateHistoryButtons();
+    }
+
+    private ImageSource? CreateCanvasThumbnail()
+    {
+        if (ImgComposite.Source is not BitmapSource src) return null;
+        try
+        {
+            var dv = new DrawingVisual();
+            using (var dc = dv.RenderOpen())
+            {
+                dc.DrawImage(src, new Rect(0, 0, 40, 40));
+            }
+            var rtb = new RenderTargetBitmap(40, 40, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(dv);
+            rtb.Freeze();
+            return rtb;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void UpdateHistoryButtons()
@@ -1424,20 +1446,70 @@ public partial class MainWindow : Window
             var state = _history.JumpTo(index);
             if (state != null)
             {
-                _canvasWidth = state.CanvasWidth;
-                _canvasHeight = state.CanvasHeight;
-                _layers.Clear();
-                foreach (var l in state.Layers) _layers.Add(l.Clone());
-                _adjustments.Brightness = state.Adjustments.Brightness;
-                _adjustments.Contrast = state.Adjustments.Contrast;
-                _adjustments.Saturation = state.Adjustments.Saturation;
-
-                _activeLayer = _layers.Count > 0 ? _layers[^1] : null;
-                LayersListBox.SelectedItem = _activeLayer;
-                UpdateHistoryButtons();
-                RenderComposite();
+                ApplyHistoryState(state);
+                TxtStatusMessage.Text = $"Jumped to step #{state.StepNumber}: {state.Description}";
             }
         }
+    }
+
+    private void ApplyHistoryState(HistoryState state)
+    {
+        _canvasWidth = state.CanvasWidth;
+        _canvasHeight = state.CanvasHeight;
+        _layers.Clear();
+        foreach (var l in state.Layers) _layers.Add(l.Clone());
+
+        _adjustments.Brightness = state.Adjustments.Brightness;
+        _adjustments.Contrast = state.Adjustments.Contrast;
+        _adjustments.Exposure = state.Adjustments.Exposure;
+        _adjustments.Saturation = state.Adjustments.Saturation;
+        _adjustments.Vibrance = state.Adjustments.Vibrance;
+        _adjustments.Warmth = state.Adjustments.Warmth;
+        _adjustments.Tint = state.Adjustments.Tint;
+        _adjustments.Vignette = state.Adjustments.Vignette;
+        _adjustments.Grayscale = state.Adjustments.Grayscale;
+        _adjustments.Invert = state.Adjustments.Invert;
+        _adjustments.Sepia = state.Adjustments.Sepia;
+        SyncAdjustmentsUI();
+
+        _activeLayer = _layers.Count > 0 ? _layers[^1] : null;
+        LayersListBox.SelectedItem = _activeLayer;
+        UpdateHistoryButtons();
+        RenderComposite();
+        UpdateDocInfo();
+    }
+
+    private void SyncAdjustmentsUI()
+    {
+        if (SliderBrightness != null) SliderBrightness.Value = _adjustments.Brightness;
+        if (SliderContrast != null) SliderContrast.Value = _adjustments.Contrast;
+        if (SliderExposure != null) SliderExposure.Value = _adjustments.Exposure;
+        if (SliderSaturation != null) SliderSaturation.Value = _adjustments.Saturation;
+        if (SliderVibrance != null) SliderVibrance.Value = _adjustments.Vibrance;
+        if (SliderWarmth != null) SliderWarmth.Value = _adjustments.Warmth;
+        if (SliderTint != null) SliderTint.Value = _adjustments.Tint;
+        if (SliderVignette != null) SliderVignette.Value = _adjustments.Vignette;
+        if (ChkGrayscale != null) ChkGrayscale.IsChecked = _adjustments.Grayscale;
+        if (ChkInvert != null) ChkInvert.IsChecked = _adjustments.Invert;
+        if (ChkSepia != null) ChkSepia.IsChecked = _adjustments.Sepia;
+    }
+
+    private void Snapshot_Click(object sender, RoutedEventArgs e)
+    {
+        RenderComposite();
+        var thumb = CreateCanvasThumbnail();
+        _history.PushState($"Snapshot {_history.StateCount}", _canvasWidth, _canvasHeight, _layers, _adjustments, thumb);
+        UpdateHistoryButtons();
+        TxtStatusMessage.Text = "Created History Snapshot";
+    }
+
+    private void ClearHistory_Click(object sender, RoutedEventArgs e)
+    {
+        RenderComposite();
+        var thumb = CreateCanvasThumbnail();
+        _history.ClearHistory(_canvasWidth, _canvasHeight, _layers, _adjustments, thumb);
+        UpdateHistoryButtons();
+        TxtStatusMessage.Text = "History cache cleared";
     }
 
     // =========================================================================
@@ -1622,16 +1694,89 @@ public partial class MainWindow : Window
         var dlg = new ExportDialog(_canvasWidth, _canvasHeight) { Owner = this };
         if (dlg.ShowDialog() == true)
         {
+            if (dlg.IsIconPack)
+            {
+                var ofd = new OpenFolderDialog
+                {
+                    Title = "Select Destination Folder for iOS AppIcon Pack",
+                    Multiselect = false
+                };
+
+                if (ofd.ShowDialog() == true)
+                {
+                    try
+                    {
+                        string targetDir = Path.Combine(ofd.FolderName, "AppIcon.appiconset");
+                        Directory.CreateDirectory(targetDir);
+
+                        var iconSizes = new (string filename, int size)[]
+                        {
+                            ("AppIcon-1024.png", 1024),
+                            ("AppIcon-180@3x.png", 180),
+                            ("AppIcon-120@2x.png", 120),
+                            ("AppIcon-87@3x.png", 87),
+                            ("AppIcon-60@3x.png", 60),
+                            ("AppIcon-167@2x.png", 167),
+                            ("AppIcon-152@2x.png", 152),
+                            ("AppIcon-76@1x.png", 76),
+                            ("AppIcon-58@2x.png", 58),
+                            ("AppIcon-40@2x.png", 40),
+                            ("AppIcon-20@2x.png", 20)
+                        };
+
+                        foreach (var (filename, size) in iconSizes)
+                        {
+                            var iconComposite = ImageCompositor.RenderComposite(size, size, _layers, _adjustments, includeCheckerboard: false);
+                            var encoder = new PngBitmapEncoder();
+                            encoder.Frames.Add(BitmapFrame.Create(iconComposite));
+                            using var fileStream = File.Create(Path.Combine(targetDir, filename));
+                            encoder.Save(fileStream);
+                        }
+
+                        string contentsJson = """
+                        {
+                          "images" : [
+                            { "size" : "1024x1024", "idiom" : "ios-marketing", "filename" : "AppIcon-1024.png", "scale" : "1x" },
+                            { "size" : "60x60", "idiom" : "iphone", "filename" : "AppIcon-180@3x.png", "scale" : "3x" },
+                            { "size" : "60x60", "idiom" : "iphone", "filename" : "AppIcon-120@2x.png", "scale" : "2x" },
+                            { "size" : "29x29", "idiom" : "iphone", "filename" : "AppIcon-87@3x.png", "scale" : "3x" },
+                            { "size" : "20x20", "idiom" : "iphone", "filename" : "AppIcon-60@3x.png", "scale" : "3x" },
+                            { "size" : "83.5x83.5", "idiom" : "ipad", "filename" : "AppIcon-167@2x.png", "scale" : "2x" },
+                            { "size" : "76x76", "idiom" : "ipad", "filename" : "AppIcon-152@2x.png", "scale" : "2x" },
+                            { "size" : "76x76", "idiom" : "ipad", "filename" : "AppIcon-76@1x.png", "scale" : "1x" },
+                            { "size" : "29x29", "idiom" : "ipad", "filename" : "AppIcon-58@2x.png", "scale" : "2x" },
+                            { "size" : "20x20", "idiom" : "ipad", "filename" : "AppIcon-40@2x.png", "scale" : "2x" }
+                          ],
+                          "info" : {
+                            "author" : "xcode",
+                            "version" : 1
+                          }
+                        }
+                        """;
+                        File.WriteAllText(Path.Combine(targetDir, "Contents.json"), contentsJson);
+
+                        MessageBox.Show($"Complete iOS App Icon Pack successfully generated in:\n{targetDir}", "iOS Icon Pack Exported", MessageBoxButton.OK, MessageBoxImage.Information);
+                        TxtStatusMessage.Text = $"Exported 11 iOS App Icons to {Path.GetFileName(targetDir)}";
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Icon pack export failed: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                return;
+            }
+
             string ext = dlg.Format.ToLower() switch
             {
                 "jpeg" => "jpg",
                 "bmp" => "bmp",
+                "tiff" => "tif",
                 _ => "png"
             };
 
             var sfd = new SaveFileDialog
             {
-                FileName = Path.GetFileNameWithoutExtension(_docName) + "-export." + ext,
+                FileName = Path.GetFileNameWithoutExtension(_docName) + $"-export@{dlg.Scale}x." + ext,
                 Filter = $"{dlg.Format} Image|*.{ext}|All Files|*.*",
                 Title = "Export Artwork"
             };
@@ -1648,6 +1793,7 @@ public partial class MainWindow : Window
                     {
                         "JPEG" => new JpegBitmapEncoder { QualityLevel = dlg.Quality },
                         "BMP" => new BmpBitmapEncoder(),
+                        "TIFF" => new TiffBitmapEncoder(),
                         _ => new PngBitmapEncoder()
                     };
 
@@ -1655,7 +1801,8 @@ public partial class MainWindow : Window
                     using var stream = File.Create(sfd.FileName);
                     encoder.Save(stream);
 
-                    MessageBox.Show("Artwork successfully exported!", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"Artwork successfully exported at {dlg.Scale}x ({w:0} × {h:0} px)!", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                    TxtStatusMessage.Text = $"Exported {Path.GetFileName(sfd.FileName)} ({w:0}×{h:0} px)";
                 }
                 catch (Exception ex)
                 {
@@ -1701,14 +1848,8 @@ public partial class MainWindow : Window
         var state = _history.Undo();
         if (state != null)
         {
-            _canvasWidth = state.CanvasWidth;
-            _canvasHeight = state.CanvasHeight;
-            _layers.Clear();
-            foreach (var l in state.Layers) _layers.Add(l.Clone());
-            _activeLayer = _layers.Count > 0 ? _layers[^1] : null;
-            LayersListBox.SelectedItem = _activeLayer;
-            UpdateHistoryButtons();
-            RenderComposite();
+            ApplyHistoryState(state);
+            TxtStatusMessage.Text = $"Undo: {state.Description}";
         }
     }
 
@@ -1717,14 +1858,8 @@ public partial class MainWindow : Window
         var state = _history.Redo();
         if (state != null)
         {
-            _canvasWidth = state.CanvasWidth;
-            _canvasHeight = state.CanvasHeight;
-            _layers.Clear();
-            foreach (var l in state.Layers) _layers.Add(l.Clone());
-            _activeLayer = _layers.Count > 0 ? _layers[^1] : null;
-            LayersListBox.SelectedItem = _activeLayer;
-            UpdateHistoryButtons();
-            RenderComposite();
+            ApplyHistoryState(state);
+            TxtStatusMessage.Text = $"Redo: {state.Description}";
         }
     }
 
