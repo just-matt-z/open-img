@@ -152,6 +152,44 @@
                         <TextBlock x:Name="TxtCloneSourceStatus" Text="Source: Alt+Click canvas to sample" FontSize="11" FontWeight="Medium" Foreground="{StaticResource ThemeTextSecondaryBrush}" />
                     </Border>
                 </StackPanel>
+
+                <!-- Gradient Options -->
+                <StackPanel x:Name="OptionsGradient" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="GRADIENT" FontSize="11" FontWeight="Bold" Foreground="{StaticResource SystemBlueBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                    
+                    <Border Background="#10767680" CornerRadius="6" Padding="2" Margin="0,0,14,0">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="RbGradientLinear" Content="Linear" Style="{StaticResource IOS7SegmentedButtonStyle}" IsChecked="True" Click="GradientType_Click" Tag="Linear" />
+                            <RadioButton x:Name="RbGradientRadial" Content="Radial" Style="{StaticResource IOS7SegmentedButtonStyle}" Click="GradientType_Click" Tag="Radial" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Gradient Preview Swatch -->
+                    <Border x:Name="BorderGradientPreview" Width="90" Height="20" CornerRadius="4" BorderBrush="#30000000" BorderThickness="1" Margin="0,0,10,0" ToolTip="Active Gradient (Click to reverse)" Cursor="Hand" MouseDown="GradientReverse_Click">
+                        <Border.Background>
+                            <LinearGradientBrush x:Name="BrushGradientPreview" StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop x:Name="GradStop1" Color="#007AFF" Offset="0" />
+                                <GradientStop x:Name="GradStop2" Color="#FFFFFF" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <Button Content="⇄ Reverse" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="GradientReverse_Click" Margin="0,0,14,0" ToolTip="Reverse Colors" />
+
+                    <TextBlock Text="OPACITY" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Slider x:Name="SliderGradientOpacity" Minimum="1" Maximum="100" Value="100" Width="80" Style="{StaticResource IOS7SliderStyle}" ValueChanged="GradientOpacity_Changed" />
+                    <TextBlock x:Name="TxtGradientOpacityVal" Text="100%" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,16,0" Width="36" />
+
+                    <!-- Quick iOS 7 Presets -->
+                    <Border Background="#10767680" CornerRadius="6" Padding="2">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Sunrise" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="GradientPreset_Click" Tag="Sunrise" ToolTip="iOS Sunrise (Pink → Orange)" />
+                            <Button Content="Ocean" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="GradientPreset_Click" Tag="Ocean" ToolTip="iOS Ocean (Blue → Teal)" />
+                            <Button Content="Sunset" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="GradientPreset_Click" Tag="Sunset" ToolTip="iOS Sunset (Purple → Pink)" />
+                            <Button Content="Lime" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="GradientPreset_Click" Tag="Lime" ToolTip="iOS Vibrant (Green → Lime)" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -221,8 +259,11 @@
                     <RadioButton x:Name="ToolCloneStamp" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Clone Stamp (S) - Alt+Click to sample source" Click="Tool_Changed" Tag="CloneStamp">
                         <TextBlock Text="⎘" FontSize="18" />
                     </RadioButton>
-                    <RadioButton x:Name="ToolFill" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Paint Bucket (G)" Click="Tool_Changed" Tag="Fill">
+                    <RadioButton x:Name="ToolFill" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Paint Bucket (K)" Click="Tool_Changed" Tag="Fill">
                         <TextBlock Text="⯌" FontSize="16" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolGradient" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Gradient Tool (G)" Click="Tool_Changed" Tag="Gradient">
+                        <TextBlock Text="◩" FontSize="18" />
                     </RadioButton>
                     <RadioButton x:Name="ToolText" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Text Layer (T)" Click="Tool_Changed" Tag="Text">
                         <TextBlock Text="T" FontSize="16" FontWeight="Bold" />

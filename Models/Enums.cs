@@ -12,7 +12,14 @@ public enum ToolType
     Text,       // T (Vector Text)
     Shape,      // U (Vector Shape)
     Eyedropper, // I (Color Picker)
-    CloneStamp  // S (Clone Stamp / Sampling)
+    CloneStamp, // S (Clone Stamp / Sampling)
+    Gradient    // G (Linear & Radial Gradient)
+}
+
+public enum GradientStyle
+{
+    Linear,
+    Radial
 }
 
 public enum LayerType
