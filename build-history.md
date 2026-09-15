@@ -15,3 +15,4 @@
 | open-img-v1.0.11-build12-release-20260915-0841.zip | 0.77 MB | 2026-09-15 08:41 | v1.0.11 | 12 | release | 56217f8 |
 | open-img-v1.0.12-build13-release-20260915-0846.zip | 0.77 MB | 2026-09-15 08:46 | v1.0.12 | 13 | release | 4c1aea9 |
 | open-img-v1.1.0-build14-release-20260915-0850.zip | 0.77 MB | 2026-09-15 08:50 | v1.1.0 | 14 | release | 3e06cc6 |
+| open-img-v1.1.1-build15-release-20260915-0854.zip | 0.77 MB | 2026-09-15 08:54 | v1.1.1 | 15 | release | 5babdac |

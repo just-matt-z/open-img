@@ -176,11 +176,14 @@ public partial class MainWindow : Window
     // =========================================================================
     private void RenderComposite()
     {
-        CanvasBackdrop.Width = _canvasWidth;
-        CanvasBackdrop.Height = _canvasHeight;
+        if (CanvasBackdrop != null)
+        {
+            CanvasBackdrop.Width = _canvasWidth;
+            CanvasBackdrop.Height = _canvasHeight;
+        }
 
         var composite = ImageCompositor.RenderComposite(_canvasWidth, _canvasHeight, _layers, _adjustments);
-        ImgComposite.Source = composite;
+        if (ImgComposite != null) ImgComposite.Source = composite;
         UpdateOverlays();
     }
 
@@ -188,11 +191,12 @@ public partial class MainWindow : Window
     {
         _currentCanvasMouse = null;
         UpdateOverlays();
-        CanvasScrollViewer.Cursor = Cursors.Arrow;
+        if (CanvasScrollViewer != null) CanvasScrollViewer.Cursor = Cursors.Arrow;
     }
 
     private void UpdateOverlays(Point? mousePos = null)
     {
+        if (OverlayCanvas == null) return;
         OverlayCanvas.Width = _canvasWidth;
         OverlayCanvas.Height = _canvasHeight;
         OverlayCanvas.Children.Clear();
@@ -555,7 +559,7 @@ public partial class MainWindow : Window
 
     private ImageSource? CreateCanvasThumbnail()
     {
-        if (ImgComposite.Source is not BitmapSource src) return null;
+        if (ImgComposite?.Source is not BitmapSource src) return null;
         try
         {
             var dv = new DrawingVisual();
@@ -576,21 +580,24 @@ public partial class MainWindow : Window
 
     private void UpdateHistoryButtons()
     {
-        BtnUndo.IsEnabled = _history.CanUndo;
-        BtnRedo.IsEnabled = _history.CanRedo;
+        if (BtnUndo != null) BtnUndo.IsEnabled = _history.CanUndo;
+        if (BtnRedo != null) BtnRedo.IsEnabled = _history.CanRedo;
     }
 
     private void UpdateDocInfo()
     {
-        TxtDocInfo.Text = $"{_docName} ({(int)_canvasWidth} × {(int)_canvasHeight} px)";
-        TxtStatusDimensions.Text = $"{(int)_canvasWidth} × {(int)_canvasHeight} px";
+        if (TxtDocInfo != null) TxtDocInfo.Text = $"{_docName} ({(int)_canvasWidth} × {(int)_canvasHeight} px)";
+        if (TxtStatusDimensions != null) TxtStatusDimensions.Text = $"{(int)_canvasWidth} × {(int)_canvasHeight} px";
     }
 
     private void UpdateZoomDisplay()
     {
-        CanvasScale.ScaleX = _zoom;
-        CanvasScale.ScaleY = _zoom;
-        TxtStatusZoom.Text = $"Zoom: {(int)(_zoom * 100)}%";
+        if (CanvasScale != null)
+        {
+            CanvasScale.ScaleX = _zoom;
+            CanvasScale.ScaleY = _zoom;
+        }
+        if (TxtStatusZoom != null) TxtStatusZoom.Text = $"Zoom: {(int)(_zoom * 100)}%";
     }
 
     // =========================================================================
