@@ -7,9 +7,10 @@ namespace OpenImage.Engine;
 public static class DrawingEngine
 {
     /// <summary>
-    /// Draws a solid or soft circular dab on a WriteableBitmap in Bgra32 format
+    /// <summary>
+    /// Draws a solid, soft, or airbrush circular dab on a WriteableBitmap in Bgra32 format with customizable hardness
     /// </summary>
-    public static unsafe void DrawBrushStamp(WriteableBitmap bmp, int centerX, int centerY, int radius, Color color, double opacity, bool isEraser = false)
+    public static unsafe void DrawBrushStamp(WriteableBitmap bmp, int centerX, int centerY, int radius, Color color, double opacity, bool isEraser = false, double hardness = 0.5)
     {
         if (bmp == null || radius <= 0) return;
 
@@ -31,6 +32,7 @@ public static class DrawingEngine
             byte drawG = color.G;
             byte drawR = color.R;
             float alphaFactor = (float)(opacity * (color.A / 255.0));
+            float hard = (float)Math.Clamp(hardness, 0.0, 1.0);
 
             for (int y = minY; y <= maxY; y++)
             {
@@ -45,10 +47,29 @@ public static class DrawingEngine
 
                     if (distSquared <= rSquared)
                     {
-                        // Calculate edge feathering
                         float distance = MathF.Sqrt(distSquared);
-                        float edgeFeather = 1.0f - Math.Clamp(distance / radius, 0.0f, 1.0f);
-                        float pixelAlpha = alphaFactor * Math.Min(1.0f, edgeFeather * 2.0f);
+                        float normDist = distance / radius; // 0.0 at center, 1.0 at outer edge
+                        if (normDist > 1.0f) continue;
+
+                        float falloff;
+                        if (hard >= 0.98f)
+                        {
+                            // Crisp / Ink Pen with 1-px antialiased boundary
+                            falloff = Math.Clamp((float)radius - distance, 0.0f, 1.0f);
+                        }
+                        else if (normDist <= hard)
+                        {
+                            falloff = 1.0f;
+                        }
+                        else
+                        {
+                            // Smooth cubic hermite falloff from hardness threshold to 1.0
+                            float t = (normDist - hard) / (1.0f - hard);
+                            falloff = 1.0f - (t * t * (3.0f - 2.0f * t));
+                        }
+
+                        float pixelAlpha = alphaFactor * falloff;
+                        if (pixelAlpha <= 0.001f) continue;
 
                         byte* pixel = row + (x * 4);
 
@@ -85,14 +106,14 @@ public static class DrawingEngine
     }
 
     /// <summary>
-    /// Interpolates a continuous stroke between two points
+    /// Interpolates a continuous stroke between two points with hardness falloff
     /// </summary>
-    public static void DrawBrushLine(WriteableBitmap bmp, Point p1, Point p2, int radius, Color color, double opacity, bool isEraser = false)
+    public static void DrawBrushLine(WriteableBitmap bmp, Point p1, Point p2, int radius, Color color, double opacity, bool isEraser = false, double hardness = 0.5)
     {
         double dx = p2.X - p1.X;
         double dy = p2.Y - p1.Y;
         double dist = Math.Sqrt(dx * dx + dy * dy);
-        double step = Math.Max(1.0, radius * 0.35); // spacing
+        double step = hardness < 0.3 ? Math.Max(1.0, radius * 0.15) : Math.Max(1.0, radius * 0.30); // denser step for airbrush
         int steps = Math.Max(1, (int)Math.Ceiling(dist / step));
 
         for (int i = 0; i <= steps; i++)
@@ -100,7 +121,7 @@ public static class DrawingEngine
             double t = (double)i / steps;
             int x = (int)Math.Round(p1.X + dx * t);
             int y = (int)Math.Round(p1.Y + dy * t);
-            DrawBrushStamp(bmp, x, y, radius, color, opacity, isEraser);
+            DrawBrushStamp(bmp, x, y, radius, color, opacity, isEraser, hardness);
         }
     }
 
