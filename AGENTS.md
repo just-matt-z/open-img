@@ -23,10 +23,10 @@ All items below must be defined. If any value contains `{{...}}`, the agent must
 | :--- | :--- | :--- |
 | `PROJECT_NAME` | Human-readable project title | `Open Image` |
 | `PROJECT_IDENTIFIER` | File-safe / slugified name | `open-img` |
-| `PROJECT_TECH_STACK` | Language / framework / platform | `React + Vite (Vanilla CSS)` |
+| `PROJECT_TECH_STACK` | Language / framework / platform | `C# / .NET 9 WPF (Native Windows)` |
 | `GITHUB_REPO_URL` | Remote git repository URL | `https://github.com/just-matt-z/open-img.git` |
 | `SYNC_TARGET_DIR` | Local folder or cloud sync destination | `C:\Users\matth\Desktop\vibe-projects\open-img\builds` |
-| `BUILD_COMMAND` | Command used to produce release/debug build | `npm run build` |
+| `BUILD_COMMAND` | Command used to produce release/debug build | `dotnet publish -c Release -r win-x64 --self-contained false` |
 | `ARTIFACT_EXTENSION` | Build output extension | `.zip` |
 | `DEFAULT_BUILD_TYPE` | Default build type | `release` |
 

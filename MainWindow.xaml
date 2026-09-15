@@ -1,0 +1,394 @@
+<Window x:Class="OpenImage.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:OpenImage.Models"
+        Title="Open Image — Native Windows Studio" 
+        Height="900" Width="1440"
+        MinWidth="1024" MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource ThemeBackgroundBrush}"
+        KeyDown="Window_KeyDown"
+        AllowDrop="True"
+        Drop="Window_Drop"
+        DragOver="Window_DragOver">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Top Header Bar -->
+            <RowDefinition Height="48" />
+            <!-- Contextual Tool Options Bar -->
+            <RowDefinition Height="36" />
+            <!-- Main Workspace Stage -->
+            <RowDefinition Height="*" />
+            <!-- Bottom Status Bar -->
+            <RowDefinition Height="28" />
+        </Grid.RowDefinitions>
+
+        <!-- ==================================================================
+             1. TOP NAVIGATION BAR (iOS 7 Frosted Header)
+             ================================================================== -->
+        <Border Grid.Row="0" Background="{StaticResource ThemeBarBrush}" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0,0,0,0.5" Padding="14,0">
+            <Grid VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: Branding & File Actions -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Grid.Column="0">
+                    <!-- App Icon -->
+                    <Border Width="24" Height="24" CornerRadius="6" Background="{StaticResource SystemBlueBrush}" Margin="0,0,8,0">
+                        <Path Data="M 6,16 L 11,10 L 14,14 L 17,11 L 20,16 Z" Fill="#FFFFFF" />
+                    </Border>
+                    <TextBlock Text="Open Image" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <Border Background="#20007AFF" CornerRadius="10" Padding="6,2" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <TextBlock Text="PRO" FontSize="9" FontWeight="Bold" Foreground="{StaticResource SystemBlueBrush}" />
+                    </Border>
+
+                    <!-- New & Open Buttons -->
+                    <Border Background="#10767680" CornerRadius="6" Padding="2" Margin="0,0,14,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="New" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="NewCanvas_Click" />
+                            <Button Content="Open" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="OpenFile_Click" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Document Title & Dimensions -->
+                    <TextBlock x:Name="TxtDocInfo" Text="Matterhorn-Sunset.png (1920 × 1080 px)" FontSize="12" Foreground="{StaticResource ThemeTextSecondaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Center: Zoom Segmented Control -->
+                <Border Grid.Column="1" HorizontalAlignment="Center" Background="#12767680" CornerRadius="6" Padding="2">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="RbZoom50" Content="50%" Style="{StaticResource IOS7SegmentedButtonStyle}" Click="ZoomPreset_Click" Tag="0.5" Margin="2,0" />
+                        <RadioButton x:Name="RbZoom100" Content="100%" Style="{StaticResource IOS7SegmentedButtonStyle}" Click="ZoomPreset_Click" Tag="1.0" Margin="2,0" />
+                        <RadioButton x:Name="RbZoom200" Content="200%" Style="{StaticResource IOS7SegmentedButtonStyle}" Click="ZoomPreset_Click" Tag="2.0" Margin="2,0" />
+                        <RadioButton x:Name="RbZoomFit" Content="Fit" Style="{StaticResource IOS7SegmentedButtonStyle}" IsChecked="True" Click="ZoomFit_Click" Margin="2,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Right: Undo, Redo, Theme & Export -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Grid.Column="2">
+                    <Button x:Name="BtnUndo" Content="↶ Undo" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="Undo_Click" Margin="0,0,4,0" />
+                    <Button x:Name="BtnRedo" Content="↷ Redo" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="Redo_Click" Margin="0,0,8,0" />
+                    <Button x:Name="BtnToggleTheme" Content="☼ Mode" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="ToggleTheme_Click" Margin="0,0,10,0" />
+                    <Button Content="Export" Style="{StaticResource IOS7PrimaryButtonStyle}" Click="Export_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ==================================================================
+             2. CONTEXTUAL TOOL OPTIONS BAR
+             ================================================================== -->
+        <Border Grid.Row="1" Background="{StaticResource ThemeCardBrush}" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0,0,0,0.5" Padding="16,0">
+            <Grid VerticalAlignment="Center">
+                <!-- Brush / Eraser Options -->
+                <StackPanel x:Name="OptionsBrush" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="SIZE" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Slider x:Name="SliderBrushSize" Minimum="1" Maximum="250" Value="28" Width="120" Style="{StaticResource IOS7SliderStyle}" ValueChanged="BrushSize_Changed" />
+                    <TextBlock x:Name="TxtBrushSizeVal" Text="28px" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,20,0" Width="36" />
+
+                    <TextBlock Text="OPACITY" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Slider x:Name="SliderBrushOpacity" Minimum="1" Maximum="100" Value="100" Width="100" Style="{StaticResource IOS7SliderStyle}" ValueChanged="BrushOpacity_Changed" />
+                    <TextBlock x:Name="TxtBrushOpacityVal" Text="100%" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Width="36" />
+                </StackPanel>
+
+                <!-- Crop Options -->
+                <StackPanel x:Name="OptionsCrop" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="CROP TOOL" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <Button Content="Cancel" Style="{StaticResource IOS7DestructiveButtonStyle}" Click="CancelCrop_Click" Margin="0,0,8,0" />
+                    <Button Content="Apply Crop" Style="{StaticResource IOS7PrimaryButtonStyle}" Click="ApplyCrop_Click" />
+                </StackPanel>
+
+                <!-- Marquee Options -->
+                <StackPanel x:Name="OptionsMarquee" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="SELECTION" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <Button Content="Clear Selection" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="ClearSelection_Click" Margin="0,0,8,0" />
+                    <Button Content="Delete Inside" Style="{StaticResource IOS7DestructiveButtonStyle}" Click="DeleteSelection_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ==================================================================
+             3. MAIN WORKSPACE STAGE
+             ================================================================== -->
+        <Grid Grid.Row="2">
+            <!-- Canvas Viewport (Center) -->
+            <ScrollViewer x:Name="CanvasScrollViewer" 
+                          HorizontalScrollBarVisibility="Hidden" 
+                          VerticalScrollBarVisibility="Hidden"
+                          Background="{StaticResource ThemeCanvasBackdropBrush}"
+                          PreviewMouseWheel="ScrollViewer_PreviewMouseWheel"
+                          MouseDown="Canvas_MouseDown"
+                          MouseMove="Canvas_MouseMove"
+                          MouseUp="Canvas_MouseUp">
+                <Grid x:Name="CanvasContainer" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Grid.LayoutTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="CanvasScale" ScaleX="0.6" ScaleY="0.6" />
+                            <TranslateTransform x:Name="CanvasTranslate" />
+                        </TransformGroup>
+                    </Grid.LayoutTransform>
+
+                    <!-- Checkerboard Background Tile -->
+                    <Border x:Name="CanvasBackdrop" Background="#FFFFFF" BorderBrush="#20000000" BorderThickness="1">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.16" Direction="270" />
+                        </Border.Effect>
+
+                        <Grid>
+                            <!-- Render Composite Image Display -->
+                            <Image x:Name="ImgComposite" Stretch="None" RenderOptions.BitmapScalingMode="HighQuality" />
+
+                            <!-- Overlay Canvas for Transform Handles, Crop Box, Selection -->
+                            <Canvas x:Name="OverlayCanvas" IsHitTestVisible="False" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </ScrollViewer>
+
+            <!-- Floating Left Tool Palette (iOS 7 Frosted Vertical Strip) -->
+            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="14,14,0,0"
+                    Background="#F0FFFFFF" CornerRadius="16" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5"
+                    Padding="6,8" Width="52">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.08" Direction="270" />
+                </Border.Effect>
+
+                <StackPanel HorizontalAlignment="Center">
+                    <RadioButton x:Name="ToolSelect" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Move / Transform (V)" IsChecked="True" Click="Tool_Changed" Tag="Select">
+                        <TextBlock Text="↖" FontSize="18" FontWeight="Bold" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolMarquee" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Marquee Selection (M)" Click="Tool_Changed" Tag="Marquee">
+                        <TextBlock Text="⬚" FontSize="18" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolCrop" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Crop &amp; Straighten (C)" Click="Tool_Changed" Tag="Crop">
+                        <TextBlock Text="⯐" FontSize="16" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolBrush" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Brush Tool (B)" Click="Tool_Changed" Tag="Brush">
+                        <TextBlock Text="✎" FontSize="18" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolEraser" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Eraser (E)" Click="Tool_Changed" Tag="Eraser">
+                        <TextBlock Text="⌫" FontSize="16" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolFill" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Paint Bucket (G)" Click="Tool_Changed" Tag="Fill">
+                        <TextBlock Text="⯌" FontSize="16" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolText" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Text Layer (T)" Click="Tool_Changed" Tag="Text">
+                        <TextBlock Text="T" FontSize="16" FontWeight="Bold" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolShape" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Vector Shapes (U)" Click="Tool_Changed" Tag="Shape">
+                        <TextBlock Text="▢" FontSize="18" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolEyedropper" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Eyedropper (I)" Click="Tool_Changed" Tag="Eyedropper">
+                        <TextBlock Text="🝡" FontSize="16" />
+                    </RadioButton>
+
+                    <!-- Hairline Divider -->
+                    <Border Height="1" Background="{StaticResource ThemeHairlineBrush}" Margin="4,6" />
+
+                    <!-- Primary & Secondary Color Swatches -->
+                    <Grid Width="34" Height="34" Cursor="Hand" ToolTip="Color Palette (Click to swap, X)" MouseDown="ColorChip_MouseDown">
+                        <Border x:Name="ChipSecondary" Width="20" Height="20" CornerRadius="10" Background="#FFFFFF" BorderBrush="#60000000" BorderThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                        <Border x:Name="ChipPrimary" Width="20" Height="20" CornerRadius="10" Background="{StaticResource SystemBlueBrush}" BorderBrush="#FFFFFF" BorderThickness="1.5" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Floating Right Inspector Panel (iOS 7 Frosted Sheet) -->
+            <Border HorizontalAlignment="Right" VerticalAlignment="Stretch" Margin="0,14,14,14" Width="310"
+                    Background="#F0FFFFFF" CornerRadius="16" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.08" Direction="270" />
+                </Border.Effect>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Segmented Tab Header -->
+                    <Border Grid.Row="0" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0,0,0,0.5" Padding="12,10">
+                        <Border Background="#10767680" CornerRadius="6" Padding="2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <RadioButton x:Name="TabLayers" Grid.Column="0" Content="Layers" Style="{StaticResource IOS7SegmentedButtonStyle}" IsChecked="True" Click="Tab_Click" Tag="Layers" HorizontalAlignment="Stretch" />
+                                <RadioButton x:Name="TabAdjust" Grid.Column="1" Content="Adjust" Style="{StaticResource IOS7SegmentedButtonStyle}" Click="Tab_Click" Tag="Adjust" HorizontalAlignment="Stretch" />
+                                <RadioButton x:Name="TabHistory" Grid.Column="2" Content="History" Style="{StaticResource IOS7SegmentedButtonStyle}" Click="Tab_Click" Tag="History" HorizontalAlignment="Stretch" />
+                            </Grid>
+                        </Border>
+                    </Border>
+
+                    <!-- Tab Content Area -->
+                    <Grid Grid.Row="1" Margin="14">
+                        <!-- TAB 1: LAYERS -->
+                        <Grid x:Name="PanelLayers">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Layer Controls (Blend Mode & Opacity) -->
+                            <Border Grid.Row="0" Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="10" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="Blend Mode" FontSize="11" Foreground="{StaticResource ThemeTextSecondaryBrush}" VerticalAlignment="Center" />
+                                        <ComboBox x:Name="CmbBlendMode" Width="140" HorizontalAlignment="Right" SelectionChanged="BlendMode_Changed">
+                                            <ComboBoxItem Content="Normal" IsSelected="True" />
+                                            <ComboBoxItem Content="Multiply" />
+                                            <ComboBoxItem Content="Screen" />
+                                            <ComboBoxItem Content="Overlay" />
+                                            <ComboBoxItem Content="Darken" />
+                                            <ComboBoxItem Content="Lighten" />
+                                            <ComboBoxItem Content="Difference" />
+                                            <ComboBoxItem Content="ColorDodge" />
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid>
+                                        <TextBlock Text="Opacity" FontSize="11" Foreground="{StaticResource ThemeTextSecondaryBrush}" VerticalAlignment="Center" />
+                                        <Slider x:Name="SliderLayerOpacity" Minimum="0" Maximum="100" Value="100" Width="120" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="LayerOpacity_Changed" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Layers List -->
+                            <ListBox x:Name="LayersListBox" Grid.Row="1" Background="Transparent" BorderThickness="0" SelectionChanged="LayersList_SelectionChanged">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:Layer}">
+                                        <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="8" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="8,6" Margin="0,2">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="38" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Layer Thumbnail -->
+                                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="4" Background="#F0F0F2" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Margin="0,0,8,0">
+                                                    <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                                                </Border>
+
+                                                <!-- Layer Info -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Medium" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding Type}" FontSize="10" Foreground="{StaticResource ThemeTextTertiaryBrush}" />
+                                                </StackPanel>
+
+                                                <!-- Visibility & Lock -->
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Button Content="👁" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="ToggleVisibility_Click" Tag="{Binding}" ToolTip="Toggle Visibility" />
+                                                    <Button Content="🔒" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="ToggleLock_Click" Tag="{Binding}" ToolTip="Lock Layer" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- Layer Actions Footer -->
+                            <Border Grid.Row="2" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0,0.5,0,0" Padding="0,8,0,0">
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <Button Content="＋" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="16" FontWeight="Bold" Click="AddLayer_Click" ToolTip="New Layer (Ctrl+Shift+N)" />
+                                        <Button Content="⧉" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="14" Click="DuplicateLayer_Click" ToolTip="Duplicate Layer (Ctrl+J)" />
+                                        <Button Content="⮇" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="14" Click="MergeDown_Click" ToolTip="Merge Down (Ctrl+E)" />
+                                    </StackPanel>
+                                    <Button Content="🗑" Style="{StaticResource IOS7DestructiveButtonStyle}" FontSize="14" HorizontalAlignment="Right" Click="DeleteLayer_Click" ToolTip="Delete Layer (Del)" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <!-- TAB 2: ADJUSTMENTS -->
+                        <ScrollViewer x:Name="PanelAdjust" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="TONE &amp; LIGHT" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+                                <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="12" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <TextBlock Text="Brightness" FontSize="12" VerticalAlignment="Center" />
+                                            <Slider x:Name="SliderBrightness" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
+                                        </Grid>
+                                        <Grid Margin="0,0,0,10">
+                                            <TextBlock Text="Contrast" FontSize="12" VerticalAlignment="Center" />
+                                            <Slider x:Name="SliderContrast" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
+                                        </Grid>
+                                        <Grid>
+                                            <TextBlock Text="Exposure" FontSize="12" VerticalAlignment="Center" />
+                                            <Slider x:Name="SliderExposure" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="COLOR &amp; SATURATION" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+                                <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="12" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <TextBlock Text="Saturation" FontSize="12" VerticalAlignment="Center" />
+                                            <Slider x:Name="SliderSaturation" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
+                                        </Grid>
+                                        <Grid>
+                                            <TextBlock Text="Vibrance" FontSize="12" VerticalAlignment="Center" />
+                                            <Slider x:Name="SliderVibrance" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="CREATIVE FILTERS" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+                                <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="12" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <CheckBox x:Name="ChkGrayscale" Content="Grayscale (B&amp;W)" Margin="0,0,0,8" Click="Adjustments_Changed" />
+                                        <CheckBox x:Name="ChkInvert" Content="Invert Colors" Margin="0,0,0,8" Click="Adjustments_Changed" />
+                                        <CheckBox x:Name="ChkSepia" Content="Vintage Sepia" Click="Adjustments_Changed" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Button Content="Reset All Adjustments" Style="{StaticResource IOS7DestructiveButtonStyle}" HorizontalAlignment="Center" Click="ResetAdjustments_Click" />
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- TAB 3: HISTORY -->
+                        <Grid x:Name="PanelHistory" Visibility="Collapsed">
+                            <ListBox x:Name="HistoryListBox" Background="Transparent" BorderThickness="0" SelectionChanged="HistoryList_SelectionChanged">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:HistoryState}">
+                                        <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="6" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="10,8" Margin="0,2">
+                                            <Grid>
+                                                <TextBlock Text="{Binding Description}" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding Timestamp}" FontSize="10" Foreground="{StaticResource ThemeTextTertiaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================================================================
+             4. BOTTOM STATUS BAR
+             ================================================================== -->
+        <Border Grid.Row="3" Background="{StaticResource ThemeBarBrush}" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0,0.5,0,0" Padding="14,0">
+            <Grid VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <TextBlock x:Name="TxtStatusTool" Text="Tool: SELECT" FontSize="11" FontWeight="SemiBold" Margin="0,0,16,0" />
+                    <TextBlock x:Name="TxtStatusDimensions" Text="1920 × 1080 px" FontSize="11" Margin="0,0,16,0" Foreground="{StaticResource ThemeTextSecondaryBrush}" />
+                    <TextBlock x:Name="TxtStatusZoom" Text="Zoom: 60%" FontSize="11" Foreground="{StaticResource ThemeTextSecondaryBrush}" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock x:Name="TxtStatusCoords" Text="X: 0, Y: 0" FontSize="11" Margin="0,0,16,0" Foreground="{StaticResource ThemeTextSecondaryBrush}" />
+                    <TextBlock Text="Open Image • Windows Native Studio" FontSize="11" Foreground="{StaticResource ThemeTextTertiaryBrush}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
