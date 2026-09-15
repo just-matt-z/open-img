@@ -1238,6 +1238,9 @@ public partial class MainWindow : Window
         _adjustments.Exposure = SliderExposure?.Value ?? 0;
         _adjustments.Saturation = SliderSaturation?.Value ?? 0;
         _adjustments.Vibrance = SliderVibrance?.Value ?? 0;
+        _adjustments.Warmth = SliderWarmth?.Value ?? 0;
+        _adjustments.Tint = SliderTint?.Value ?? 0;
+        _adjustments.Vignette = SliderVignette?.Value ?? 0;
         _adjustments.Grayscale = ChkGrayscale?.IsChecked == true;
         _adjustments.Invert = ChkInvert?.IsChecked == true;
         _adjustments.Sepia = ChkSepia?.IsChecked == true;
@@ -1253,11 +1256,54 @@ public partial class MainWindow : Window
         if (SliderExposure != null) SliderExposure.Value = 0;
         if (SliderSaturation != null) SliderSaturation.Value = 0;
         if (SliderVibrance != null) SliderVibrance.Value = 0;
+        if (SliderWarmth != null) SliderWarmth.Value = 0;
+        if (SliderTint != null) SliderTint.Value = 0;
+        if (SliderVignette != null) SliderVignette.Value = 0;
         if (ChkGrayscale != null) ChkGrayscale.IsChecked = false;
         if (ChkInvert != null) ChkInvert.IsChecked = false;
         if (ChkSepia != null) ChkSepia.IsChecked = false;
 
         CommitAction("Reset Adjustments");
+    }
+
+    private void FilterSharpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeLayer?.Bitmap != null && !_activeLayer.IsLocked)
+        {
+            ImageCompositor.ApplySharpen(_activeLayer.Bitmap);
+            _activeLayer.UpdateThumbnail();
+            CommitAction("Filter: Sharpen");
+        }
+    }
+
+    private void FilterBlur_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeLayer?.Bitmap != null && !_activeLayer.IsLocked)
+        {
+            ImageCompositor.ApplyGaussianBlur(_activeLayer.Bitmap, 3);
+            _activeLayer.UpdateThumbnail();
+            CommitAction("Filter: Gaussian Blur");
+        }
+    }
+
+    private void FilterEdgeDetect_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeLayer?.Bitmap != null && !_activeLayer.IsLocked)
+        {
+            ImageCompositor.ApplyEdgeDetect(_activeLayer.Bitmap);
+            _activeLayer.UpdateThumbnail();
+            CommitAction("Filter: Edge Detect");
+        }
+    }
+
+    private void FilterEmboss_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeLayer?.Bitmap != null && !_activeLayer.IsLocked)
+        {
+            ImageCompositor.ApplyEmboss(_activeLayer.Bitmap);
+            _activeLayer.UpdateThumbnail();
+            CommitAction("Filter: Emboss");
+        }
     }
 
     // =========================================================================

@@ -420,27 +420,49 @@
                                     </StackPanel>
                                 </Border>
 
-                                <TextBlock Text="COLOR &amp; SATURATION" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+                                <TextBlock Text="COLOR &amp; WHITE BALANCE" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
                                 <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="12" Margin="0,0,0,14">
                                     <StackPanel>
                                         <Grid Margin="0,0,0,10">
                                             <TextBlock Text="Saturation" FontSize="12" VerticalAlignment="Center" />
                                             <Slider x:Name="SliderSaturation" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
                                         </Grid>
-                                        <Grid>
+                                        <Grid Margin="0,0,0,10">
                                             <TextBlock Text="Vibrance" FontSize="12" VerticalAlignment="Center" />
                                             <Slider x:Name="SliderVibrance" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
+                                        </Grid>
+                                        <Grid Margin="0,0,0,10">
+                                            <TextBlock Text="Warmth" FontSize="12" VerticalAlignment="Center" />
+                                            <Slider x:Name="SliderWarmth" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
+                                        </Grid>
+                                        <Grid>
+                                            <TextBlock Text="Tint" FontSize="12" VerticalAlignment="Center" />
+                                            <Slider x:Name="SliderTint" Minimum="-100" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
                                         </Grid>
                                     </StackPanel>
                                 </Border>
 
-                                <TextBlock Text="CREATIVE FILTERS" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+                                <TextBlock Text="EFFECTS &amp; LENS" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
                                 <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="12" Margin="0,0,0,14">
                                     <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <TextBlock Text="Vignette" FontSize="12" VerticalAlignment="Center" />
+                                            <Slider x:Name="SliderVignette" Minimum="0" Maximum="100" Value="0" Width="140" HorizontalAlignment="Right" Style="{StaticResource IOS7SliderStyle}" ValueChanged="Adjustments_Changed" />
+                                        </Grid>
                                         <CheckBox x:Name="ChkGrayscale" Content="Grayscale (B&amp;W)" Margin="0,0,0,8" Click="Adjustments_Changed" />
                                         <CheckBox x:Name="ChkInvert" Content="Invert Colors" Margin="0,0,0,8" Click="Adjustments_Changed" />
                                         <CheckBox x:Name="ChkSepia" Content="Vintage Sepia" Click="Adjustments_Changed" />
                                     </StackPanel>
+                                </Border>
+
+                                <TextBlock Text="CONVOLUTION FILTERS" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+                                <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="8" Margin="0,0,0,14">
+                                    <UniformGrid Columns="2">
+                                        <Button Content="Sharpen" Style="{StaticResource IOS7BorderlessButtonStyle}" Margin="2" Click="FilterSharpen_Click" ToolTip="High-pass unsharp edge sharpening" />
+                                        <Button Content="Gaussian Blur" Style="{StaticResource IOS7BorderlessButtonStyle}" Margin="2" Click="FilterBlur_Click" ToolTip="Separable smooth blur" />
+                                        <Button Content="Edge Detect" Style="{StaticResource IOS7BorderlessButtonStyle}" Margin="2" Click="FilterEdgeDetect_Click" ToolTip="Laplacian/Sobel edge detection" />
+                                        <Button Content="Emboss" Style="{StaticResource IOS7BorderlessButtonStyle}" Margin="2" Click="FilterEmboss_Click" ToolTip="Bas-relief embossing" />
+                                    </UniformGrid>
                                 </Border>
 
                                 <Button Content="Reset All Adjustments" Style="{StaticResource IOS7DestructiveButtonStyle}" HorizontalAlignment="Center" Click="ResetAdjustments_Click" />
