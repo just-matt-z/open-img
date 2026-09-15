@@ -92,6 +92,8 @@
                     <TextBlock Text="OPACITY" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <Slider x:Name="SliderBrushOpacity" Minimum="1" Maximum="100" Value="100" Width="100" Style="{StaticResource IOS7SliderStyle}" ValueChanged="BrushOpacity_Changed" />
                     <TextBlock x:Name="TxtBrushOpacityVal" Text="100%" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Width="36" />
+                    <TextBlock Text="COLOR" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="14,0,6,0" />
+                    <Border x:Name="ActiveColorIndicator" Width="20" Height="20" CornerRadius="10" Background="{StaticResource SystemBlueBrush}" BorderBrush="#50000000" BorderThickness="1" Cursor="Hand" MouseDown="PrimaryChip_MouseDown" ToolTip="Open Color Studio" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <!-- Crop Options -->
@@ -195,9 +197,9 @@
                     <Border Height="1" Background="{StaticResource ThemeHairlineBrush}" Margin="4,6" />
 
                     <!-- Primary & Secondary Color Swatches -->
-                    <Grid Width="34" Height="34" Cursor="Hand" ToolTip="Color Palette (Click to swap, X)" MouseDown="ColorChip_MouseDown">
-                        <Border x:Name="ChipSecondary" Width="20" Height="20" CornerRadius="10" Background="#FFFFFF" BorderBrush="#60000000" BorderThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
-                        <Border x:Name="ChipPrimary" Width="20" Height="20" CornerRadius="10" Background="{StaticResource SystemBlueBrush}" BorderBrush="#FFFFFF" BorderThickness="1.5" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                    <Grid Width="34" Height="34">
+                        <Border x:Name="ChipSecondary" Width="20" Height="20" CornerRadius="10" Background="#FFFFFF" BorderBrush="#60000000" BorderThickness="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="Hand" MouseDown="SecondaryChip_MouseDown" ToolTip="Secondary Color (Click to customize)" />
+                        <Border x:Name="ChipPrimary" Width="20" Height="20" CornerRadius="10" Background="{StaticResource SystemBlueBrush}" BorderBrush="#FFFFFF" BorderThickness="1.5" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="Hand" MouseDown="PrimaryChip_MouseDown" ToolTip="Primary Color (Click to open Color Studio)" />
                     </Grid>
                 </StackPanel>
             </Border>

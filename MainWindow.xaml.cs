@@ -660,6 +660,7 @@ public partial class MainWindow : Window
             Color c = DrawingEngine.SampleColor(wb, (int)pt.X, (int)pt.Y);
             _primaryColor = c;
             ChipPrimary.Background = new SolidColorBrush(c);
+            if (ActiveColorIndicator != null) ActiveColorIndicator.Background = new SolidColorBrush(c);
         }
     }
 
@@ -696,14 +697,36 @@ public partial class MainWindow : Window
         if (TxtBrushOpacityVal != null) TxtBrushOpacityVal.Text = $"{(int)e.NewValue}%";
     }
 
+    private void PrimaryChip_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var dlg = new ColorPickerDialog(_primaryColor) { Owner = this };
+        if (dlg.ShowDialog() == true)
+        {
+            _primaryColor = dlg.SelectedColor;
+            ChipPrimary.Background = new SolidColorBrush(_primaryColor);
+            if (ActiveColorIndicator != null) ActiveColorIndicator.Background = new SolidColorBrush(_primaryColor);
+        }
+    }
+
+    private void SecondaryChip_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var dlg = new ColorPickerDialog(_secondaryColor) { Owner = this };
+        if (dlg.ShowDialog() == true)
+        {
+            _secondaryColor = dlg.SelectedColor;
+            ChipSecondary.Background = new SolidColorBrush(_secondaryColor);
+        }
+    }
+
     private void ColorChip_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        // Swap primary and secondary colors
+        // Swap primary and secondary colors (shortcut X)
         var temp = _primaryColor;
         _primaryColor = _secondaryColor;
         _secondaryColor = temp;
         ChipPrimary.Background = new SolidColorBrush(_primaryColor);
         ChipSecondary.Background = new SolidColorBrush(_secondaryColor);
+        if (ActiveColorIndicator != null) ActiveColorIndicator.Background = new SolidColorBrush(_primaryColor);
     }
 
     // =========================================================================
