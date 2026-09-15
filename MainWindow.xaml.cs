@@ -623,17 +623,29 @@ public partial class MainWindow : Window
 
         if (_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser)
         {
-            if (_activeLayer != null && _activeLayer.Type == LayerType.Raster && !_activeLayer.IsLocked && _activeLayer.Bitmap != null)
+            if (_activeLayer != null && !_activeLayer.IsLocked)
             {
-                int localX = (int)(pt.X - _activeLayer.X);
-                int localY = (int)(pt.Y - _activeLayer.Y);
-                int size = (int)SliderBrushSize.Value;
-                double opacity = SliderBrushOpacity.Value / 100.0;
-                double hardness = SliderBrushHardness != null ? SliderBrushHardness.Value / 100.0 : 0.5;
-                bool isEraser = _activeTool == ToolType.Eraser;
+                WriteableBitmap? targetBmp = (_activeLayer.IsEditingMask && _activeLayer.HasMask)
+                    ? _activeLayer.MaskBitmap
+                    : (_activeLayer.Type == LayerType.Raster ? _activeLayer.Bitmap : null);
 
-                DrawingEngine.DrawBrushStamp(_activeLayer.Bitmap, localX, localY, size / 2, _primaryColor, opacity, isEraser, hardness);
-                RenderComposite();
+                if (targetBmp != null)
+                {
+                    int localX = (int)(pt.X - _activeLayer.X);
+                    int localY = (int)(pt.Y - _activeLayer.Y);
+                    int size = (int)SliderBrushSize.Value;
+                    double opacity = SliderBrushOpacity.Value / 100.0;
+                    double hardness = SliderBrushHardness != null ? SliderBrushHardness.Value / 100.0 : 0.5;
+                    bool isEraser = _activeTool == ToolType.Eraser;
+
+                    Color drawColor = (_activeLayer.IsEditingMask && _activeLayer.HasMask)
+                        ? (isEraser ? Colors.White : _primaryColor)
+                        : _primaryColor;
+
+                    DrawingEngine.DrawBrushStamp(targetBmp, localX, localY, size / 2, drawColor, opacity, (!_activeLayer.IsEditingMask && isEraser), hardness);
+                    if (_activeLayer.IsEditingMask) _activeLayer.UpdateMaskThumbnail();
+                    RenderComposite();
+                }
             }
         }
         else if (_activeTool == ToolType.Marquee)
@@ -649,13 +661,21 @@ public partial class MainWindow : Window
         }
         else if (_activeTool == ToolType.Fill)
         {
-            if (_activeLayer != null && _activeLayer.Type == LayerType.Raster && !_activeLayer.IsLocked && _activeLayer.Bitmap != null)
+            if (_activeLayer != null && !_activeLayer.IsLocked)
             {
-                int localX = (int)(pt.X - _activeLayer.X);
-                int localY = (int)(pt.Y - _activeLayer.Y);
-                DrawingEngine.FloodFill(_activeLayer.Bitmap, localX, localY, _primaryColor, 32);
-                _activeLayer.UpdateThumbnail();
-                CommitAction("Flood Fill");
+                WriteableBitmap? targetBmp = (_activeLayer.IsEditingMask && _activeLayer.HasMask)
+                    ? _activeLayer.MaskBitmap
+                    : (_activeLayer.Type == LayerType.Raster ? _activeLayer.Bitmap : null);
+
+                if (targetBmp != null)
+                {
+                    int localX = (int)(pt.X - _activeLayer.X);
+                    int localY = (int)(pt.Y - _activeLayer.Y);
+                    DrawingEngine.FloodFill(targetBmp, localX, localY, _primaryColor, 32);
+                    if (_activeLayer.IsEditingMask) _activeLayer.UpdateMaskThumbnail();
+                    else _activeLayer.UpdateThumbnail();
+                    CommitAction(_activeLayer.IsEditingMask ? "Mask Fill" : "Flood Fill");
+                }
             }
         }
         else if (_activeTool == ToolType.Eyedropper)
@@ -773,18 +793,30 @@ public partial class MainWindow : Window
             UpdateOverlays(pt);
             return;
         }
-        else if ((_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser) && _activeLayer != null && _activeLayer.Bitmap != null)
+        else if ((_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser) && _activeLayer != null)
         {
-            Point localLast = new Point(_lastPoint.X - _activeLayer.X, _lastPoint.Y - _activeLayer.Y);
-            Point localCurrent = new Point(pt.X - _activeLayer.X, pt.Y - _activeLayer.Y);
-            int size = (int)SliderBrushSize.Value;
-            double opacity = SliderBrushOpacity.Value / 100.0;
-            double hardness = SliderBrushHardness != null ? SliderBrushHardness.Value / 100.0 : 0.5;
-            bool isEraser = _activeTool == ToolType.Eraser;
+            WriteableBitmap? targetBmp = (_activeLayer.IsEditingMask && _activeLayer.HasMask)
+                ? _activeLayer.MaskBitmap
+                : (_activeLayer.Type == LayerType.Raster ? _activeLayer.Bitmap : null);
 
-            DrawingEngine.DrawBrushLine(_activeLayer.Bitmap, localLast, localCurrent, size / 2, _primaryColor, opacity, isEraser, hardness);
-            _lastPoint = pt;
-            RenderComposite();
+            if (targetBmp != null)
+            {
+                Point localLast = new Point(_lastPoint.X - _activeLayer.X, _lastPoint.Y - _activeLayer.Y);
+                Point localCurrent = new Point(pt.X - _activeLayer.X, pt.Y - _activeLayer.Y);
+                int size = (int)SliderBrushSize.Value;
+                double opacity = SliderBrushOpacity.Value / 100.0;
+                double hardness = SliderBrushHardness != null ? SliderBrushHardness.Value / 100.0 : 0.5;
+                bool isEraser = _activeTool == ToolType.Eraser;
+
+                Color drawColor = (_activeLayer.IsEditingMask && _activeLayer.HasMask)
+                    ? (isEraser ? Colors.White : _primaryColor)
+                    : _primaryColor;
+
+                DrawingEngine.DrawBrushLine(targetBmp, localLast, localCurrent, size / 2, drawColor, opacity, (!_activeLayer.IsEditingMask && isEraser), hardness);
+                _lastPoint = pt;
+                if (_activeLayer.IsEditingMask) _activeLayer.UpdateMaskThumbnail();
+                RenderComposite();
+            }
         }
         else if (_activeTool == ToolType.CloneStamp && _activeLayer != null && _activeLayer.Bitmap != null)
         {
@@ -849,8 +881,19 @@ public partial class MainWindow : Window
         }
         else if (_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser)
         {
-            _activeLayer?.UpdateThumbnail();
-            CommitAction(_activeTool == ToolType.Brush ? "Brush Stroke" : "Eraser");
+            if (_activeLayer != null)
+            {
+                if (_activeLayer.IsEditingMask && _activeLayer.HasMask)
+                {
+                    _activeLayer.UpdateMaskThumbnail();
+                    CommitAction("Mask Paint");
+                }
+                else
+                {
+                    _activeLayer.UpdateThumbnail();
+                    CommitAction(_activeTool == ToolType.Brush ? "Brush Stroke" : "Eraser");
+                }
+            }
         }
         else if (_activeTool == ToolType.CloneStamp)
         {
@@ -861,7 +904,11 @@ public partial class MainWindow : Window
         {
             Point pEnd = e.GetPosition(ImgComposite);
             double dist = Math.Sqrt(Math.Pow(pEnd.X - _dragStart.X, 2) + Math.Pow(pEnd.Y - _dragStart.Y, 2));
-            if (dist >= 3 && _activeLayer != null && _activeLayer.Type == LayerType.Raster && !_activeLayer.IsLocked && _activeLayer.Bitmap != null)
+            WriteableBitmap? gradTarget = (_activeLayer != null && !_activeLayer.IsLocked)
+                ? (_activeLayer.IsEditingMask && _activeLayer.HasMask ? _activeLayer.MaskBitmap : (_activeLayer.Type == LayerType.Raster ? _activeLayer.Bitmap : null))
+                : null;
+
+            if (dist >= 3 && _activeLayer != null && gradTarget != null)
             {
                 Point localP1 = new Point(_dragStart.X - _activeLayer.X, _dragStart.Y - _activeLayer.Y);
                 Point localP2 = new Point(pEnd.X - _activeLayer.X, pEnd.Y - _activeLayer.Y);
@@ -876,15 +923,17 @@ public partial class MainWindow : Window
 
                 if (_activeGradientStyle == GradientStyle.Linear)
                 {
-                    DrawingEngine.DrawLinearGradient(_activeLayer.Bitmap, localP1, localP2, _gradientColor1, _gradientColor2, localClip, opacity);
+                    DrawingEngine.DrawLinearGradient(gradTarget, localP1, localP2, _gradientColor1, _gradientColor2, localClip, opacity);
                 }
                 else
                 {
-                    DrawingEngine.DrawRadialGradient(_activeLayer.Bitmap, localP1, localP2, _gradientColor1, _gradientColor2, localClip, opacity);
+                    DrawingEngine.DrawRadialGradient(gradTarget, localP1, localP2, _gradientColor1, _gradientColor2, localClip, opacity);
                 }
 
-                _activeLayer.UpdateThumbnail();
-                CommitAction($"Render {(_activeGradientStyle == GradientStyle.Linear ? "Linear" : "Radial")} Gradient");
+                if (_activeLayer.IsEditingMask) _activeLayer.UpdateMaskThumbnail();
+                else _activeLayer.UpdateThumbnail();
+                RenderComposite();
+                CommitAction(_activeLayer.IsEditingMask ? "Mask Gradient" : $"Render {(_activeGradientStyle == GradientStyle.Linear ? "Linear" : "Radial")} Gradient");
             }
             UpdateOverlays();
         }
@@ -1225,6 +1274,53 @@ public partial class MainWindow : Window
             LayersListBox.SelectedItem = _activeLayer;
             CommitAction("Delete Layer");
         }
+    }
+
+    private void LayerThumb_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is Layer layer)
+        {
+            layer.IsEditingMask = false;
+            _activeLayer = layer;
+            LayersListBox.SelectedItem = layer;
+            TxtStatusMessage.Text = $"Selected Layer: {layer.Name} (Editing pixels)";
+        }
+    }
+
+    private void MaskThumb_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is Layer layer && layer.HasMask)
+        {
+            layer.IsEditingMask = true;
+            _activeLayer = layer;
+            LayersListBox.SelectedItem = layer;
+            TxtStatusMessage.Text = $"Selected Mask: {layer.Name} (Black hides, White reveals)";
+        }
+    }
+
+    private void AddMask_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeLayer == null) return;
+        if (_activeLayer.HasMask)
+        {
+            TxtStatusMessage.Text = $"Layer '{_activeLayer.Name}' already has a mask.";
+            return;
+        }
+        _activeLayer.AddMask(revealAll: true);
+        _activeLayer.IsEditingMask = true;
+        RenderComposite();
+        CommitAction("Add Layer Mask");
+        TxtStatusMessage.Text = $"Added Mask to '{_activeLayer.Name}'. Paint black to hide, white to reveal.";
+    }
+
+    private void RemoveMask_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeLayer == null || !_activeLayer.HasMask) return;
+        _activeLayer.RemoveMask(apply: true);
+        _activeLayer.IsEditingMask = false;
+        RenderComposite();
+        CommitAction("Apply Layer Mask");
+        TxtStatusMessage.Text = $"Applied Mask to '{_activeLayer.Name}'.";
     }
 
     // =========================================================================
@@ -1934,6 +2030,18 @@ public partial class MainWindow : Window
         else if (e.Key == Key.U) { ToolShape.IsChecked = true; Tool_Changed(ToolShape, null!); }
         else if (e.Key == Key.I) { ToolEyedropper.IsChecked = true; Tool_Changed(ToolEyedropper, null!); }
         else if (e.Key == Key.X) { ColorChip_MouseDown(null!, null!); }
+        else if (e.Key == Key.D)
+        {
+            _primaryColor = Colors.Black;
+            _secondaryColor = Colors.White;
+            _gradientColor1 = _primaryColor;
+            _gradientColor2 = _secondaryColor;
+            if (ChipPrimary != null) ChipPrimary.Background = new SolidColorBrush(_primaryColor);
+            if (ChipSecondary != null) ChipSecondary.Background = new SolidColorBrush(_secondaryColor);
+            if (ActiveColorIndicator != null) ActiveColorIndicator.Background = new SolidColorBrush(_primaryColor);
+            UpdateGradientPreview();
+            TxtStatusMessage.Text = "Colors reset to Default Black / White";
+        }
         else if (e.Key == Key.Delete)
         {
             if (_hasSelection)

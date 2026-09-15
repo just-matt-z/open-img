@@ -67,6 +67,10 @@ public static class ImageCompositor
                 layerRtb.Render(dv);
 
                 var layerWb = new WriteableBitmap(layerRtb);
+                if (layer.HasMask && layer.IsMaskEnabled && layer.MaskBitmap != null)
+                {
+                    ApplyMaskToLayerBuffer(layerWb, layer.MaskBitmap, layer.X, layer.Y, layer.Width, layer.Height);
+                }
                 BlendBuffers(compositeWb, layerWb, layer.BlendMode);
             }
         }
@@ -593,6 +597,75 @@ public static class ImageCompositor
         finally
         {
             bmp.Unlock();
+        }
+    }
+
+    /// <summary>
+    /// Modulates layer buffer alpha by the layer's non-destructive mask luminance
+    /// </summary>
+    public static unsafe void ApplyMaskToLayerBuffer(WriteableBitmap layerWb, WriteableBitmap maskBmp, double layerX, double layerY, double layerW, double layerH)
+    {
+        if (layerWb == null || maskBmp == null || layerW <= 0 || layerH <= 0) return;
+
+        int canvasW = layerWb.PixelWidth;
+        int canvasH = layerWb.PixelHeight;
+        int maskW = maskBmp.PixelWidth;
+        int maskH = maskBmp.PixelHeight;
+
+        int startX = Math.Clamp((int)Math.Floor(layerX), 0, canvasW);
+        int endX = Math.Clamp((int)Math.Ceiling(layerX + layerW), 0, canvasW);
+        int startY = Math.Clamp((int)Math.Floor(layerY), 0, canvasH);
+        int endY = Math.Clamp((int)Math.Ceiling(layerY + layerH), 0, canvasH);
+
+        layerWb.Lock();
+        maskBmp.Lock();
+        try
+        {
+            byte* lScan0 = (byte*)layerWb.BackBuffer;
+            int lStride = layerWb.BackBufferStride;
+            byte* mScan0 = (byte*)maskBmp.BackBuffer;
+            int mStride = maskBmp.BackBufferStride;
+
+            for (int cy = 0; cy < canvasH; cy++)
+            {
+                byte* lRow = lScan0 + (cy * lStride);
+                bool inLayerY = cy >= startY && cy < endY;
+                int my = inLayerY ? (int)((cy - layerY) / layerH * maskH) : -1;
+
+                for (int cx = 0; cx < canvasW; cx++)
+                {
+                    byte* lp = lRow + (cx * 4);
+                    if (lp[3] == 0) continue;
+
+                    bool inLayerX = cx >= startX && cx < endX;
+                    if (inLayerY && inLayerX)
+                    {
+                        int mx = (int)((cx - layerX) / layerW * maskW);
+                        if (mx >= 0 && mx < maskW && my >= 0 && my < maskH)
+                        {
+                            byte* mp = mScan0 + (my * mStride) + (mx * 4);
+                            float maskLuminance = (0.299f * mp[2] + 0.587f * mp[1] + 0.114f * mp[0]) / 255.0f;
+                            float maskAlpha = (mp[3] / 255.0f) * maskLuminance;
+                            lp[3] = (byte)Math.Clamp((int)Math.Round(lp[3] * maskAlpha), 0, 255);
+                        }
+                        else
+                        {
+                            lp[3] = 0;
+                        }
+                    }
+                    else
+                    {
+                        lp[3] = 0;
+                    }
+                }
+            }
+
+            layerWb.AddDirtyRect(new Int32Rect(0, 0, canvasW, canvasH));
+        }
+        finally
+        {
+            maskBmp.Unlock();
+            layerWb.Unlock();
         }
     }
 }
