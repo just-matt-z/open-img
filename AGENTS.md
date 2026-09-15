@@ -61,7 +61,7 @@ All items below must be defined. If any value contains `{{...}}`, the agent must
   ```
 
 ### Rule 2: Automatic Delivery to Cloud / Local Sync Directory
-- Whenever a build (`npm run build`) finishes successfully, the output artifact must automatically be copied/moved to the sync directory: `C:\Users\matth\Desktop\vibe-projects\open-img\builds\open-img-Builds\`.
+- Whenever a build (`powershell -ExecutionPolicy Bypass -File ./build-and-sync.ps1`) finishes successfully, the output artifact must automatically be copied/moved to the sync directory: `C:\Users\matth\Desktop\vibe-projects\open-img\builds\open-img-Builds\`.
 - The build process or agent must verify that the file exists at the destination after the transfer.
 
 ### Rule 3: Artifact Naming Convention
@@ -127,7 +127,7 @@ Write-Host "Build completed and synced to target directory successfully!" -Foreg
 ## 4. Agent Instructions for Workflows
 1. **Pre-flight Check**: Verify that this file has NO unfilled placeholders. If any are found, **STOP AND PROMPT THE USER**.
 2. **Before Building**: Check the current version, increment the build counter / version code, and determine if semantic version needs a patch/minor bump.
-3. **Executing Build**: Run `npm run build` (or use `build-and-sync.ps1`).
+3. **Executing Build**: Run `powershell -ExecutionPolicy Bypass -File ./build-and-sync.ps1` (with optional `-BumpPatch`, `-BumpMinor`, or `-BumpMajor`).
 4. **Post-Build Verification**:
    - Check `C:\Users\matth\Desktop\vibe-projects\open-img\builds\open-img-Builds\` to confirm the newly named artifact is present.
    - Report the generated artifact name and version to the user.
@@ -222,3 +222,19 @@ All agents must follow this checklist to guarantee the remote repository is neve
 2. **Push on Completion:** Before concluding any agent response or task involving git changes, run `git push origin develop` (or the active branch).
 3. **Check Remote Status:** Verify with `git status` that the local branch is not ahead of `origin/<branch>`.
 4. **No Secrets / Artifacts in Git:** Confirm that `.gitignore` prevents build artifacts, credentials, and local environment files from being pushed to GitHub.
+
+---
+
+## 7. Autonomous Feedback Loop Protocol (10-Iteration Cycle)
+
+When requested or initiated, agents operate under this recursive feedback loop:
+1. **Step 1: Review & Industry Standards Research (Autoproceed)**:
+   - Review the current state of the codebase (`Models/`, `Engine/`, `Themes/`, `Dialogs/`, `MainWindow.xaml`, etc.).
+   - Research industry standards (Photoshop, Pixelmator Pro, Paint.NET, Procreate, iOS Photo Studio) and query online on what features can be added and what can be refactored in the code.
+   - Create a structured implementation plan for the cycle under **autoproceed** mode.
+2. **Step 2: Execute Implementation Plan & Verify**:
+   - Implement the planned features, fixes, and refactoring on a dedicated `feature/*` branch cut from `develop`.
+   - Build and verify via `dotnet build -c Release` and `./build-and-sync.ps1`.
+   - Merge into `develop` (`git merge --no-ff`) and immediately push (`git push origin develop`).
+3. **Repetition**:
+   - Execute this loop **10 times** consecutively (Cycles 1 through 10), progressively elevating the application to professional Photoshop-rivaling fidelity and iOS 7 aesthetic perfection.
