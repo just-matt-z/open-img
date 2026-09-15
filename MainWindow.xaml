@@ -97,6 +97,9 @@
                 <!-- Crop Options -->
                 <StackPanel x:Name="OptionsCrop" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
                     <TextBlock Text="CROP TOOL" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <Button Content="1:1" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="CropRatio_Click" Tag="1:1" Margin="0,0,6,0" />
+                    <Button Content="16:9" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="CropRatio_Click" Tag="16:9" Margin="0,0,6,0" />
+                    <Button Content="4:3" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="CropRatio_Click" Tag="4:3" Margin="0,0,12,0" />
                     <Button Content="Cancel" Style="{StaticResource IOS7DestructiveButtonStyle}" Click="CancelCrop_Click" Margin="0,0,8,0" />
                     <Button Content="Apply Crop" Style="{StaticResource IOS7PrimaryButtonStyle}" Click="ApplyCrop_Click" />
                 </StackPanel>
@@ -104,7 +107,9 @@
                 <!-- Marquee Options -->
                 <StackPanel x:Name="OptionsMarquee" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
                     <TextBlock Text="SELECTION" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <Button Content="Clear Selection" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="ClearSelection_Click" Margin="0,0,8,0" />
+                    <Button Content="Select All" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="SelectAll_Click" Margin="0,0,8,0" />
+                    <Button Content="Copy Area" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="CopySelection_Click" Margin="0,0,8,0" />
+                    <Button Content="Clear" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="ClearSelection_Click" Margin="0,0,8,0" />
                     <Button Content="Delete Inside" Style="{StaticResource IOS7DestructiveButtonStyle}" Click="DeleteSelection_Click" />
                 </StackPanel>
             </Grid>
