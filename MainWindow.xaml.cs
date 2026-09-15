@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private bool _hasSelection = false;
     private Rect _cropRect = Rect.Empty;
     private Point? _currentCanvasMouse;
+    private string? _currentProjectPath = null;
 
 
 
@@ -939,17 +940,111 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SaveProject_Click(object sender, RoutedEventArgs e)
+    {
+        SaveProject(saveAs: false);
+    }
+
+    private void SaveProject(bool saveAs)
+    {
+        if (saveAs || string.IsNullOrEmpty(_currentProjectPath))
+        {
+            var sfd = new SaveFileDialog
+            {
+                Title = "Save Multi-Layer Project",
+                Filter = "Open Image Project (*.openimg)|*.openimg|All Files (*.*)|*.*",
+                FileName = Path.GetFileNameWithoutExtension(_docName) + ".openimg"
+            };
+
+            if (sfd.ShowDialog() == true)
+            {
+                _currentProjectPath = sfd.FileName;
+                _docName = Path.GetFileName(_currentProjectPath);
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        try
+        {
+            ProjectFileManager.SaveProject(_currentProjectPath, _canvasWidth, _canvasHeight, _layers, _adjustments, _docName);
+            UpdateDocInfo();
+            MessageBox.Show($"Project saved successfully to:\n{_currentProjectPath}", "Save Project", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Save failed: {ex.Message}", "Save Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void LoadProjectFromFile(string path)
+    {
+        try
+        {
+            var (w, h, loadedLayers, adj, docName) = ProjectFileManager.LoadProject(path);
+
+            _canvasWidth = w;
+            _canvasHeight = h;
+            _docName = Path.GetFileName(path);
+            _currentProjectPath = path;
+
+            _layers.Clear();
+            foreach (var l in loadedLayers)
+            {
+                _layers.Add(l);
+            }
+
+            _activeLayer = _layers.Count > 0 ? _layers[^1] : null;
+            LayersListBox.SelectedItem = _activeLayer;
+
+            _adjustments.Brightness = adj.Brightness;
+            _adjustments.Contrast = adj.Contrast;
+            _adjustments.Exposure = adj.Exposure;
+            _adjustments.Saturation = adj.Saturation;
+            _adjustments.Vibrance = adj.Vibrance;
+            _adjustments.Grayscale = adj.Grayscale;
+            _adjustments.Invert = adj.Invert;
+            _adjustments.Sepia = adj.Sepia;
+
+            if (SliderBrightness != null) SliderBrightness.Value = adj.Brightness;
+            if (SliderContrast != null) SliderContrast.Value = adj.Contrast;
+            if (SliderExposure != null) SliderExposure.Value = adj.Exposure;
+            if (SliderSaturation != null) SliderSaturation.Value = adj.Saturation;
+            if (SliderVibrance != null) SliderVibrance.Value = adj.Vibrance;
+            if (ChkGrayscale != null) ChkGrayscale.IsChecked = adj.Grayscale;
+            if (ChkInvert != null) ChkInvert.IsChecked = adj.Invert;
+            if (ChkSepia != null) ChkSepia.IsChecked = adj.Sepia;
+
+            UpdateDocInfo();
+            CommitAction("Open Project");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Could not open project: {ex.Message}", "Open Project Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void OpenFile_Click(object sender, RoutedEventArgs e)
     {
         var ofd = new OpenFileDialog
         {
-            Filter = "Images (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|All Files (*.*)|*.*",
-            Title = "Open Artwork"
+            Filter = "All Supported (*.openimg;*.png;*.jpg;*.jpeg;*.bmp)|*.openimg;*.png;*.jpg;*.jpeg;*.bmp|Open Image Project (*.openimg)|*.openimg|Images (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|All Files (*.*)|*.*",
+            Title = "Open Artwork or Project"
         };
 
         if (ofd.ShowDialog() == true)
         {
-            LoadImageFromFile(ofd.FileName);
+            string ext = Path.GetExtension(ofd.FileName).ToLower();
+            if (ext == ".openimg")
+            {
+                LoadProjectFromFile(ofd.FileName);
+            }
+            else
+            {
+                LoadImageFromFile(ofd.FileName);
+            }
         }
     }
 
@@ -966,6 +1061,7 @@ public partial class MainWindow : Window
             _canvasWidth = bmp.PixelWidth;
             _canvasHeight = bmp.PixelHeight;
             _docName = Path.GetFileName(path);
+            _currentProjectPath = null;
 
             _layers.Clear();
             var layer = new Layer(_docName, _canvasWidth, _canvasHeight, LayerType.Raster)
@@ -1049,9 +1145,17 @@ public partial class MainWindow : Window
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files != null && files.Length > 0)
+            if (files != null && files.Length > 0 && !string.IsNullOrEmpty(files[0]))
             {
-                LoadImageFromFile(files[0]);
+                string ext = Path.GetExtension(files[0]).ToLower();
+                if (ext == ".openimg")
+                {
+                    LoadProjectFromFile(files[0]);
+                }
+                else
+                {
+                    LoadImageFromFile(files[0]);
+                }
             }
         }
     }
@@ -1351,6 +1455,12 @@ public partial class MainWindow : Window
         else if (e.Key == Key.Escape)
         {
             ClearSelection_Click(null!, null!);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            bool saveAs = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+            SaveProject(saveAs);
             e.Handled = true;
         }
         else if (e.Key == Key.N && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
