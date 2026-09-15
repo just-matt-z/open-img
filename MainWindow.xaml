@@ -496,20 +496,63 @@
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- TAB 3: HISTORY -->
+                        <!-- TAB 3: HISTORY (Visual Timeline) -->
                         <Grid x:Name="PanelHistory" Visibility="Collapsed">
-                            <ListBox x:Name="HistoryListBox" Background="Transparent" BorderThickness="0" SelectionChanged="HistoryList_SelectionChanged">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Visual Timeline List -->
+                            <ListBox x:Name="HistoryListBox" Grid.Row="0" Background="Transparent" BorderThickness="0" SelectionChanged="HistoryList_SelectionChanged">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type models:HistoryState}">
-                                        <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="6" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="10,8" Margin="0,2">
+                                        <Border x:Name="HistoryCardBorder" Background="{StaticResource ThemeCardBrush}" CornerRadius="8" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="8,6" Margin="0,2">
                                             <Grid>
-                                                <TextBlock Text="{Binding Description}" FontWeight="Medium" FontSize="12" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding Timestamp}" FontSize="10" Foreground="{StaticResource ThemeTextTertiaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="38" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Canvas Snapshot Thumbnail -->
+                                                <Border x:Name="ThumbContainer" Grid.Column="0" Width="32" Height="32" CornerRadius="5" Background="#E5E5EA" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                                                </Border>
+
+                                                <!-- Step Info & Action Name -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Border Background="#15007AFF" CornerRadius="3" Padding="4,1" Margin="0,0,6,0">
+                                                            <TextBlock Text="{Binding StepNumber, StringFormat='#{0}'}" FontSize="9" FontWeight="Bold" Foreground="#007AFF" />
+                                                        </Border>
+                                                        <TextBlock Text="{Binding Description}" FontWeight="Medium" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Timestamp}" FontSize="9" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,2,0,0" />
+                                                </StackPanel>
+
+                                                <!-- Active State Indicator -->
+                                                <Border x:Name="ActiveBadge" Grid.Column="2" Width="8" Height="8" CornerRadius="4" Background="Transparent" VerticalAlignment="Center" Margin="4,0,0,0" />
                                             </Grid>
                                         </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrentState}" Value="True">
+                                                <Setter TargetName="HistoryCardBorder" Property="BorderBrush" Value="#007AFF" />
+                                                <Setter TargetName="HistoryCardBorder" Property="BorderThickness" Value="1.5" />
+                                                <Setter TargetName="ActiveBadge" Property="Background" Value="#007AFF" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
+
+                            <!-- History Actions Footer -->
+                            <Border Grid.Row="1" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0,0.5,0,0" Padding="0,8,0,0" Margin="0,6,0,0">
+                                <Grid>
+                                    <Button Content="📸 Snapshot" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="12" HorizontalAlignment="Left" Click="Snapshot_Click" ToolTip="Create named state snapshot" />
+                                    <Button Content="🗑 Clear" Style="{StaticResource IOS7DestructiveButtonStyle}" FontSize="12" HorizontalAlignment="Right" Click="ClearHistory_Click" ToolTip="Purge undo history cache" />
+                                </Grid>
+                            </Border>
                         </Grid>
                     </Grid>
                 </Grid>

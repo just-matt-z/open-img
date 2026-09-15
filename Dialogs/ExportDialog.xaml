@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Export Artwork" 
-        Height="400" Width="420"
+        Height="490" Width="440"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="{StaticResource ThemeBackgroundBrush}">
@@ -16,43 +16,69 @@
         <TextBlock Text="Export Artwork" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
 
         <StackPanel Grid.Row="1">
-            <TextBlock Text="FORMAT" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
-            <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="6" Margin="0,0,0,16">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <RadioButton x:Name="RbPng" Content="PNG (Lossless)" Style="{StaticResource IOS7SegmentedButtonStyle}" IsChecked="True" Margin="4,0" Checked="Format_Changed" />
-                    <RadioButton x:Name="RbJpg" Content="JPEG" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="4,0" Checked="Format_Changed" />
-                    <RadioButton x:Name="RbBmp" Content="BMP" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="4,0" Checked="Format_Changed" />
-                </StackPanel>
-            </Border>
-
-            <TextBlock Text="SCALE" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
-            <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="6" Margin="0,0,0,16">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <RadioButton x:Name="RbScaleHalf" Content="0.5x" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="4,0" Checked="Scale_Changed" />
-                    <RadioButton x:Name="RbScale1" Content="1.0x" Style="{StaticResource IOS7SegmentedButtonStyle}" IsChecked="True" Margin="4,0" Checked="Scale_Changed" />
-                    <RadioButton x:Name="RbScale2" Content="2.0x" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="4,0" Checked="Scale_Changed" />
-                </StackPanel>
-            </Border>
-
-            <StackPanel x:Name="QualityPanel" Visibility="Collapsed" Margin="0,0,0,16">
-                <Grid Margin="0,0,0,6">
-                    <TextBlock Text="JPEG QUALITY" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" />
-                    <TextBlock x:Name="TxtQualityVal" Text="92%" HorizontalAlignment="Right" FontSize="11" FontWeight="SemiBold" />
+            <TextBlock Text="EXPORT MODE" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+            <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="4" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <RadioButton x:Name="RbStandardExport" Grid.Column="0" Content="Single Image" Style="{StaticResource IOS7SegmentedButtonStyle}" IsChecked="True" Checked="ExportMode_Changed" HorizontalAlignment="Stretch" />
+                    <RadioButton x:Name="RbIconPackExport" Grid.Column="1" Content="iOS App Icon Pack" Style="{StaticResource IOS7SegmentedButtonStyle}" Checked="ExportMode_Changed" HorizontalAlignment="Stretch" />
                 </Grid>
-                <Slider x:Name="SliderQuality" Minimum="10" Maximum="100" Value="92" Style="{StaticResource IOS7SliderStyle}" ValueChanged="SliderQuality_ValueChanged" />
+            </Border>
+
+            <!-- Standard Image Panel -->
+            <StackPanel x:Name="StandardExportPanel">
+                <TextBlock Text="FORMAT" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+                <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="4" Margin="0,0,0,14">
+                    <UniformGrid Columns="4">
+                        <RadioButton x:Name="RbPng" Content="PNG" Style="{StaticResource IOS7SegmentedButtonStyle}" IsChecked="True" Margin="2,0" Checked="Format_Changed" />
+                        <RadioButton x:Name="RbJpg" Content="JPEG" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="2,0" Checked="Format_Changed" />
+                        <RadioButton x:Name="RbBmp" Content="BMP" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="2,0" Checked="Format_Changed" />
+                        <RadioButton x:Name="RbTiff" Content="TIFF" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="2,0" Checked="Format_Changed" />
+                    </UniformGrid>
+                </Border>
+
+                <TextBlock Text="SCALE PRESET" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" Margin="0,0,0,6" />
+                <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="4" Margin="0,0,0,14">
+                    <UniformGrid Columns="4">
+                        <RadioButton x:Name="RbScaleHalf" Content="0.5x" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="2,0" Checked="Scale_Changed" />
+                        <RadioButton x:Name="RbScale1" Content="@1x" Style="{StaticResource IOS7SegmentedButtonStyle}" IsChecked="True" Margin="2,0" Checked="Scale_Changed" />
+                        <RadioButton x:Name="RbScale2" Content="@2x" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="2,0" Checked="Scale_Changed" />
+                        <RadioButton x:Name="RbScale3" Content="@3x" Style="{StaticResource IOS7SegmentedButtonStyle}" Margin="2,0" Checked="Scale_Changed" />
+                    </UniformGrid>
+                </Border>
+
+                <StackPanel x:Name="QualityPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <Grid Margin="0,0,0,6">
+                        <TextBlock Text="JPEG QUALITY" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" />
+                        <TextBlock x:Name="TxtQualityVal" Text="92%" HorizontalAlignment="Right" FontSize="11" FontWeight="SemiBold" />
+                    </Grid>
+                    <Slider x:Name="SliderQuality" Minimum="10" Maximum="100" Value="92" Style="{StaticResource IOS7SliderStyle}" ValueChanged="SliderQuality_ValueChanged" />
+                </StackPanel>
+
+                <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="12">
+                    <Grid>
+                        <TextBlock Text="Output Dimensions" Foreground="{StaticResource ThemeTextSecondaryBrush}" FontSize="12" />
+                        <TextBlock x:Name="TxtDimensions" Text="1920 × 1080 px" FontWeight="SemiBold" HorizontalAlignment="Right" FontSize="12" />
+                    </Grid>
+                </Border>
             </StackPanel>
 
-            <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="12">
-                <Grid>
-                    <TextBlock Text="Output Dimensions" Foreground="{StaticResource ThemeTextSecondaryBrush}" FontSize="12" />
-                    <TextBlock x:Name="TxtDimensions" Text="1920 × 1080 px" FontWeight="SemiBold" HorizontalAlignment="Right" FontSize="12" />
-                </Grid>
+            <!-- iOS Icon Pack Info Panel -->
+            <Border x:Name="IconPackPanel" Visibility="Collapsed" Background="{StaticResource ThemeCardBrush}" CornerRadius="10" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="14">
+                <StackPanel>
+                    <TextBlock Text="🍎 Complete iOS App Icon Pack" FontWeight="SemiBold" FontSize="13" Foreground="#007AFF" Margin="0,0,0,6" />
+                    <TextBlock Text="Generates all required iOS retina icons and Xcode asset catalog json:" FontSize="11" Foreground="{StaticResource ThemeTextSecondaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <TextBlock Text="• App Store (1024×1024)&#x0a;• iPhone Display: 180×180 (@3x), 120×120 (@2x), 60×60&#x0a;• iPad Display: 167×167 (Pro), 152×152 (@2x), 76×76 (@1x)&#x0a;• Settings &amp; Spotlight: 87×87 (@3x), 58×58, 40×40, 20×20&#x0a;• Contents.json Xcode metadata bundle" FontSize="10" Foreground="{StaticResource ThemeTextTertiaryBrush}" TextWrapping="Wrap" />
+                </StackPanel>
             </Border>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Cancel" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="Cancel_Click" Margin="0,0,10,0" />
-            <Button Content="Export Image" Style="{StaticResource IOS7PrimaryButtonStyle}" Click="Export_Click" />
+            <Button x:Name="BtnExport" Content="Export Image" Style="{StaticResource IOS7PrimaryButtonStyle}" Click="Export_Click" />
         </StackPanel>
     </Grid>
 </Window>
