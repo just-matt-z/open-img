@@ -24,6 +24,9 @@ public class AdjustmentsData
     public double Exposure { get; set; }
     public double Saturation { get; set; }
     public double Vibrance { get; set; }
+    public double Warmth { get; set; }
+    public double Tint { get; set; }
+    public double Vignette { get; set; }
     public bool Grayscale { get; set; }
     public bool Invert { get; set; }
     public bool Sepia { get; set; }
@@ -57,6 +60,9 @@ public class LayerData
     public double CornerRadius { get; set; } = 12;
 
     public string? BitmapEntry { get; set; }
+    public bool HasMask { get; set; } = false;
+    public bool IsMaskEnabled { get; set; } = true;
+    public string? MaskEntry { get; set; }
 }
 
 public static class ProjectFileManager
@@ -86,6 +92,9 @@ public static class ProjectFileManager
                 Exposure = adj.Exposure,
                 Saturation = adj.Saturation,
                 Vibrance = adj.Vibrance,
+                Warmth = adj.Warmth,
+                Tint = adj.Tint,
+                Vignette = adj.Vignette,
                 Grayscale = adj.Grayscale,
                 Invert = adj.Invert,
                 Sepia = adj.Sepia
@@ -115,7 +124,9 @@ public static class ProjectFileManager
                 FillColorHex = $"#{layer.FillColor.A:X2}{layer.FillColor.R:X2}{layer.FillColor.G:X2}{layer.FillColor.B:X2}",
                 StrokeColorHex = $"#{layer.StrokeColor.A:X2}{layer.StrokeColor.R:X2}{layer.StrokeColor.G:X2}{layer.StrokeColor.B:X2}",
                 StrokeWidth = layer.StrokeWidth,
-                CornerRadius = layer.CornerRadius
+                CornerRadius = layer.CornerRadius,
+                HasMask = layer.HasMask,
+                IsMaskEnabled = layer.IsMaskEnabled
             };
 
             if (layer.Type == LayerType.Raster && layer.Bitmap != null)
@@ -127,6 +138,17 @@ public static class ProjectFileManager
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(layer.Bitmap));
                 encoder.Save(entryStream);
+            }
+
+            if (layer.HasMask && layer.MaskBitmap != null)
+            {
+                string maskEntryName = $"masks/mask_{layer.Id}.png";
+                ld.MaskEntry = maskEntryName;
+                var maskEntry = archive.CreateEntry(maskEntryName, CompressionLevel.Fastest);
+                using var maskStream = maskEntry.Open();
+                var maskEncoder = new PngBitmapEncoder();
+                maskEncoder.Frames.Add(BitmapFrame.Create(layer.MaskBitmap));
+                maskEncoder.Save(maskStream);
             }
 
             manifest.Layers.Add(ld);
@@ -162,6 +184,9 @@ public static class ProjectFileManager
             Exposure = manifest.Adjustments.Exposure,
             Saturation = manifest.Adjustments.Saturation,
             Vibrance = manifest.Adjustments.Vibrance,
+            Warmth = manifest.Adjustments.Warmth,
+            Tint = manifest.Adjustments.Tint,
+            Vignette = manifest.Adjustments.Vignette,
             Grayscale = manifest.Adjustments.Grayscale,
             Invert = manifest.Adjustments.Invert,
             Sepia = manifest.Adjustments.Sepia
@@ -186,7 +211,8 @@ public static class ProjectFileManager
                 FontSize = ld.FontSize,
                 ShapeType = Enum.TryParse(ld.ShapeType, out ShapeType st) ? st : ShapeType.Rectangle,
                 StrokeWidth = ld.StrokeWidth,
-                CornerRadius = ld.CornerRadius
+                CornerRadius = ld.CornerRadius,
+                IsMaskEnabled = ld.IsMaskEnabled
             };
 
             try { layer.TextColor = (Color)ColorConverter.ConvertFromString(ld.TextColorHex); } catch { }
@@ -211,6 +237,28 @@ public static class ProjectFileManager
                     bi.Freeze();
 
                     layer.Bitmap = new WriteableBitmap(bi);
+                }
+            }
+
+            if (ld.HasMask && !string.IsNullOrEmpty(ld.MaskEntry))
+            {
+                var maskEntry = archive.GetEntry(ld.MaskEntry);
+                if (maskEntry != null)
+                {
+                    using var maskStream = maskEntry.Open();
+                    using var msMask = new MemoryStream();
+                    maskStream.CopyTo(msMask);
+                    msMask.Position = 0;
+
+                    var biMask = new BitmapImage();
+                    biMask.BeginInit();
+                    biMask.StreamSource = msMask;
+                    biMask.CacheOption = BitmapCacheOption.OnLoad;
+                    biMask.EndInit();
+                    biMask.Freeze();
+
+                    layer.MaskBitmap = new WriteableBitmap(biMask);
+                    layer.UpdateMaskThumbnail();
                 }
             }
 

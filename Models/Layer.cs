@@ -20,6 +20,10 @@ public class Layer : INotifyPropertyChanged
     private double _rotation = 0;
     private WriteableBitmap? _bitmap;
     private ImageSource? _thumbnail;
+    private WriteableBitmap? _maskBitmap;
+    private ImageSource? _maskThumbnail;
+    private bool _isMaskEnabled = true;
+    private bool _isEditingMask = false;
 
     // Text properties
     private string _textContent = "Text Layer";
@@ -120,6 +124,155 @@ public class Layer : INotifyPropertyChanged
     {
         get => _thumbnail;
         private set { _thumbnail = value; OnPropertyChanged(); }
+    }
+
+    public WriteableBitmap? MaskBitmap
+    {
+        get => _maskBitmap;
+        set
+        {
+            _maskBitmap = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasMask));
+            UpdateMaskThumbnail();
+        }
+    }
+
+    public ImageSource? MaskThumbnail
+    {
+        get => _maskThumbnail;
+        private set { _maskThumbnail = value; OnPropertyChanged(); }
+    }
+
+    public bool HasMask => _maskBitmap != null;
+
+    public bool IsMaskEnabled
+    {
+        get => _isMaskEnabled;
+        set { _isMaskEnabled = value; OnPropertyChanged(); }
+    }
+
+    public bool IsEditingMask
+    {
+        get => _isEditingMask;
+        set { _isEditingMask = value; OnPropertyChanged(); }
+    }
+
+    public void AddMask(bool revealAll = true)
+    {
+        int w = (int)Math.Max(1, Width);
+        int h = (int)Math.Max(1, Height);
+        if (_bitmap != null)
+        {
+            w = _bitmap.PixelWidth;
+            h = _bitmap.PixelHeight;
+        }
+
+        var mask = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
+        byte initVal = (byte)(revealAll ? 255 : 0);
+        mask.Lock();
+        try
+        {
+            unsafe
+            {
+                byte* scan0 = (byte*)mask.BackBuffer;
+                int stride = mask.BackBufferStride;
+                for (int y = 0; y < h; y++)
+                {
+                    byte* row = scan0 + (y * stride);
+                    for (int x = 0; x < w; x++)
+                    {
+                        byte* p = row + (x * 4);
+                        p[0] = initVal;
+                        p[1] = initVal;
+                        p[2] = initVal;
+                        p[3] = 255;
+                    }
+                }
+            }
+            mask.AddDirtyRect(new Int32Rect(0, 0, w, h));
+        }
+        finally
+        {
+            mask.Unlock();
+        }
+
+        MaskBitmap = mask;
+        IsMaskEnabled = true;
+        IsEditingMask = true;
+        UpdateMaskThumbnail();
+    }
+
+    public void RemoveMask(bool apply)
+    {
+        if (apply && _bitmap != null && _maskBitmap != null)
+        {
+            ApplyMaskToBitmap();
+        }
+        MaskBitmap = null;
+        IsEditingMask = false;
+        UpdateThumbnail();
+    }
+
+    public unsafe void ApplyMaskToBitmap()
+    {
+        if (_bitmap == null || _maskBitmap == null) return;
+        _bitmap.Lock();
+        _maskBitmap.Lock();
+        try
+        {
+            int w = Math.Min(_bitmap.PixelWidth, _maskBitmap.PixelWidth);
+            int h = Math.Min(_bitmap.PixelHeight, _maskBitmap.PixelHeight);
+            int bStride = _bitmap.BackBufferStride;
+            int mStride = _maskBitmap.BackBufferStride;
+            byte* bScan = (byte*)_bitmap.BackBuffer;
+            byte* mScan = (byte*)_maskBitmap.BackBuffer;
+
+            for (int y = 0; y < h; y++)
+            {
+                byte* bRow = bScan + (y * bStride);
+                byte* mRow = mScan + (y * mStride);
+                for (int x = 0; x < w; x++)
+                {
+                    byte* bp = bRow + (x * 4);
+                    byte* mp = mRow + (x * 4);
+                    float maskFactor = (0.299f * mp[2] + 0.587f * mp[1] + 0.114f * mp[0]) / 255.0f;
+                    bp[3] = (byte)Math.Clamp((int)(bp[3] * maskFactor), 0, 255);
+                }
+            }
+            _bitmap.AddDirtyRect(new Int32Rect(0, 0, w, h));
+        }
+        finally
+        {
+            _maskBitmap.Unlock();
+            _bitmap.Unlock();
+        }
+    }
+
+    public void UpdateMaskThumbnail()
+    {
+        if (_maskBitmap == null)
+        {
+            MaskThumbnail = null;
+            return;
+        }
+
+        try
+        {
+            var dv = new DrawingVisual();
+            using (var dc = dv.RenderOpen())
+            {
+                dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, 48, 48));
+                dc.DrawImage(_maskBitmap, new Rect(0, 0, 48, 48));
+            }
+            var rtb = new RenderTargetBitmap(48, 48, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(dv);
+            rtb.Freeze();
+            MaskThumbnail = rtb;
+        }
+        catch
+        {
+        }
     }
 
     public string TextContent
@@ -249,6 +402,18 @@ public class Layer : INotifyPropertyChanged
             this.Bitmap.CopyPixels(pixels, stride, 0);
             wb.WritePixels(new Int32Rect(0, 0, wb.PixelWidth, wb.PixelHeight), pixels, stride, 0);
             clone.Bitmap = wb;
+        }
+
+        if (this.MaskBitmap != null)
+        {
+            var mwb = new WriteableBitmap(this.MaskBitmap.PixelWidth, this.MaskBitmap.PixelHeight, 96, 96, PixelFormats.Bgra32, null);
+            int stride = this.MaskBitmap.PixelWidth * 4;
+            int size = stride * this.MaskBitmap.PixelHeight;
+            byte[] pixels = new byte[size];
+            this.MaskBitmap.CopyPixels(pixels, stride, 0);
+            mwb.WritePixels(new Int32Rect(0, 0, mwb.PixelWidth, mwb.PixelHeight), pixels, stride, 0);
+            clone.MaskBitmap = mwb;
+            clone.IsMaskEnabled = this.IsMaskEnabled;
         }
 
         clone.UpdateThumbnail();

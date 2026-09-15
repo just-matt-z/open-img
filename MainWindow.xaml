@@ -12,6 +12,10 @@
         Drop="Window_Drop"
         DragOver="Window_DragOver">
 
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <!-- Top Header Bar -->
@@ -359,15 +363,28 @@
                                         <Border Background="{StaticResource ThemeCardBrush}" CornerRadius="8" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Padding="8,6" Margin="0,2">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="38" />
+                                                    <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
 
-                                                <!-- Layer Thumbnail -->
-                                                <Border Grid.Column="0" Width="32" Height="32" CornerRadius="4" Background="#F0F0F2" BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="0.5" Margin="0,0,8,0">
-                                                    <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
-                                                </Border>
+                                                <!-- Thumbnails (Layer + optional Mask) -->
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                    <!-- Layer Thumbnail -->
+                                                    <Border x:Name="LayerThumbBorder" Width="30" Height="30" CornerRadius="4" Background="#F0F0F2" 
+                                                            BorderBrush="#007AFF" BorderThickness="1.5" Cursor="Hand" MouseDown="LayerThumb_MouseDown" ToolTip="Click to edit layer pixels">
+                                                        <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                                                    </Border>
+
+                                                    <!-- Mask Thumbnail -->
+                                                    <StackPanel Orientation="Horizontal" Visibility="{Binding HasMask, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="🔗" FontSize="8" VerticalAlignment="Center" Margin="2,0" Foreground="{StaticResource ThemeTextTertiaryBrush}" />
+                                                        <Border x:Name="MaskThumbBorder" Width="30" Height="30" CornerRadius="4" Background="#1C1C1E" 
+                                                                BorderBrush="{StaticResource ThemeHairlineBrush}" BorderThickness="1.5" Cursor="Hand" MouseDown="MaskThumb_MouseDown" ToolTip="Layer Mask (Click to edit mask. Black hides, White reveals)">
+                                                            <Image Source="{Binding MaskThumbnail}" Stretch="Uniform" />
+                                                        </Border>
+                                                    </StackPanel>
+                                                </StackPanel>
 
                                                 <!-- Layer Info -->
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -382,6 +399,14 @@
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsEditingMask}" Value="True">
+                                                <Setter TargetName="MaskThumbBorder" Property="BorderBrush" Value="#007AFF" />
+                                                <Setter TargetName="MaskThumbBorder" Property="BorderThickness" Value="2" />
+                                                <Setter TargetName="LayerThumbBorder" Property="BorderBrush" Value="{StaticResource ThemeHairlineBrush}" />
+                                                <Setter TargetName="LayerThumbBorder" Property="BorderThickness" Value="1" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -393,6 +418,8 @@
                                         <Button Content="＋" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="16" FontWeight="Bold" Click="AddLayer_Click" ToolTip="New Layer (Ctrl+Shift+N)" />
                                         <Button Content="⧉" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="14" Click="DuplicateLayer_Click" ToolTip="Duplicate Layer (Ctrl+J)" />
                                         <Button Content="⮇" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="14" Click="MergeDown_Click" ToolTip="Merge Down (Ctrl+E)" />
+                                        <Button Content="🞑" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="14" Click="AddMask_Click" ToolTip="Add Layer Mask (Reveal All)" />
+                                        <Button Content="⊘" Style="{StaticResource IOS7BorderlessButtonStyle}" FontSize="14" Click="RemoveMask_Click" ToolTip="Apply / Remove Layer Mask" />
                                     </StackPanel>
                                     <Button Content="🗑" Style="{StaticResource IOS7DestructiveButtonStyle}" FontSize="14" HorizontalAlignment="Right" Click="DeleteLayer_Click" ToolTip="Delete Layer (Del)" />
                                 </Grid>
