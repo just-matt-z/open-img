@@ -122,7 +122,8 @@
                           PreviewMouseWheel="ScrollViewer_PreviewMouseWheel"
                           MouseDown="Canvas_MouseDown"
                           MouseMove="Canvas_MouseMove"
-                          MouseUp="Canvas_MouseUp">
+                          MouseUp="Canvas_MouseUp"
+                          MouseLeave="Canvas_MouseLeave">
                 <Grid x:Name="CanvasContainer" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Grid.LayoutTransform>
                         <TransformGroup>
@@ -247,8 +248,12 @@
                                             <ComboBoxItem Content="Overlay" />
                                             <ComboBoxItem Content="Darken" />
                                             <ComboBoxItem Content="Lighten" />
-                                            <ComboBoxItem Content="Difference" />
                                             <ComboBoxItem Content="ColorDodge" />
+                                            <ComboBoxItem Content="ColorBurn" />
+                                            <ComboBoxItem Content="HardLight" />
+                                            <ComboBoxItem Content="SoftLight" />
+                                            <ComboBoxItem Content="Difference" />
+                                            <ComboBoxItem Content="Exclusion" />
                                         </ComboBox>
                                     </Grid>
                                     <Grid>

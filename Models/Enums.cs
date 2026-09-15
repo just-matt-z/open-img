@@ -29,8 +29,12 @@ public enum LayerBlendMode
     Overlay,
     Darken,
     Lighten,
+    ColorDodge,
+    ColorBurn,
+    HardLight,
+    SoftLight,
     Difference,
-    ColorDodge
+    Exclusion
 }
 
 public enum ShapeType

@@ -35,6 +35,11 @@ public partial class MainWindow : Window
     private Point _lastPoint;
     private Point _dragStart;
 
+    private Rect _selectionRect = Rect.Empty;
+    private bool _hasSelection = false;
+    private Rect _cropRect = Rect.Empty;
+    private Point? _currentCanvasMouse;
+
 
 
     public MainWindow()
@@ -165,6 +170,224 @@ public partial class MainWindow : Window
 
         var composite = ImageCompositor.RenderComposite(_canvasWidth, _canvasHeight, _layers, _adjustments);
         ImgComposite.Source = composite;
+        UpdateOverlays();
+    }
+
+    private void Canvas_MouseLeave(object sender, MouseEventArgs e)
+    {
+        _currentCanvasMouse = null;
+        UpdateOverlays();
+        CanvasScrollViewer.Cursor = Cursors.Arrow;
+    }
+
+    private void UpdateOverlays(Point? mousePos = null)
+    {
+        OverlayCanvas.Width = _canvasWidth;
+        OverlayCanvas.Height = _canvasHeight;
+        OverlayCanvas.Children.Clear();
+
+        if (mousePos != null)
+        {
+            _currentCanvasMouse = mousePos;
+        }
+
+        // 1. Transform Gizmo for active layer in Select Tool
+        if (_activeTool == ToolType.Select && _activeLayer != null)
+        {
+            double x = _activeLayer.X;
+            double y = _activeLayer.Y;
+            double w = _activeLayer.Width;
+            double h = _activeLayer.Height;
+
+            // Bounding border
+            var box = new System.Windows.Shapes.Rectangle
+            {
+                Width = Math.Max(1, w),
+                Height = Math.Max(1, h),
+                Stroke = new SolidColorBrush(Color.FromRgb(0, 122, 255)),
+                StrokeThickness = 1.0,
+                StrokeDashArray = new DoubleCollection { 4, 3 },
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(box, x);
+            Canvas.SetTop(box, y);
+            OverlayCanvas.Children.Add(box);
+
+            // 8 handles + 1 rotation anchor
+            Point[] handles = new Point[]
+            {
+                new Point(x, y),                 // NW
+                new Point(x + w / 2, y),         // N
+                new Point(x + w, y),             // NE
+                new Point(x + w, y + h / 2),     // E
+                new Point(x + w, y + h),         // SE
+                new Point(x + w / 2, y + h),     // S
+                new Point(x, y + h),             // SW
+                new Point(x, y + h / 2),         // W
+                new Point(x + w / 2, y - 24)     // Rotation Handle Anchor
+            };
+
+            // Stem for rotation handle
+            var stem = new System.Windows.Shapes.Line
+            {
+                X1 = x + w / 2,
+                Y1 = y,
+                X2 = x + w / 2,
+                Y2 = y - 24,
+                Stroke = new SolidColorBrush(Color.FromRgb(0, 122, 255)),
+                StrokeThickness = 1.0,
+                IsHitTestVisible = false
+            };
+            OverlayCanvas.Children.Add(stem);
+
+            for (int i = 0; i < handles.Length; i++)
+            {
+                var hp = handles[i];
+                bool isRotate = i == handles.Length - 1;
+                var handle = new System.Windows.Shapes.Rectangle
+                {
+                    Width = isRotate ? 8 : 7,
+                    Height = isRotate ? 8 : 7,
+                    Fill = Brushes.White,
+                    Stroke = new SolidColorBrush(Color.FromRgb(0, 122, 255)),
+                    StrokeThickness = 1.2,
+                    RadiusX = isRotate ? 4 : 1.5,
+                    RadiusY = isRotate ? 4 : 1.5,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(handle, hp.X - (isRotate ? 4 : 3.5));
+                Canvas.SetTop(handle, hp.Y - (isRotate ? 4 : 3.5));
+                OverlayCanvas.Children.Add(handle);
+            }
+        }
+
+        // 2. Crop Rule-of-Thirds Grid & Darkened Scrim
+        if (_activeTool == ToolType.Crop)
+        {
+            Rect cropRect = _cropRect;
+            if (cropRect.IsEmpty || cropRect.Width < 10)
+            {
+                cropRect = new Rect(0.1 * _canvasWidth, 0.1 * _canvasHeight, 0.8 * _canvasWidth, 0.8 * _canvasHeight);
+            }
+
+            var fullRectGeom = new RectangleGeometry(new Rect(0, 0, _canvasWidth, _canvasHeight));
+            var cropRectGeom = new RectangleGeometry(cropRect);
+            var combinedGeom = new CombinedGeometry(GeometryCombineMode.Exclude, fullRectGeom, cropRectGeom);
+
+            var scrim = new System.Windows.Shapes.Path
+            {
+                Data = combinedGeom,
+                Fill = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)),
+                IsHitTestVisible = false
+            };
+            OverlayCanvas.Children.Add(scrim);
+
+            var cropBorder = new System.Windows.Shapes.Rectangle
+            {
+                Width = cropRect.Width,
+                Height = cropRect.Height,
+                Stroke = Brushes.White,
+                StrokeThickness = 1.5,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(cropBorder, cropRect.X);
+            Canvas.SetTop(cropBorder, cropRect.Y);
+            OverlayCanvas.Children.Add(cropBorder);
+
+            // Rule of thirds lines
+            for (int i = 1; i <= 2; i++)
+            {
+                var vLine = new System.Windows.Shapes.Line
+                {
+                    X1 = cropRect.X + (cropRect.Width * i / 3.0),
+                    Y1 = cropRect.Y,
+                    X2 = cropRect.X + (cropRect.Width * i / 3.0),
+                    Y2 = cropRect.Y + cropRect.Height,
+                    Stroke = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)),
+                    StrokeThickness = 1.0,
+                    StrokeDashArray = new DoubleCollection { 4, 3 },
+                    IsHitTestVisible = false
+                };
+                OverlayCanvas.Children.Add(vLine);
+
+                var hLine = new System.Windows.Shapes.Line
+                {
+                    X1 = cropRect.X,
+                    Y1 = cropRect.Y + (cropRect.Height * i / 3.0),
+                    X2 = cropRect.X + cropRect.Width,
+                    Y2 = cropRect.Y + (cropRect.Height * i / 3.0),
+                    Stroke = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)),
+                    StrokeThickness = 1.0,
+                    StrokeDashArray = new DoubleCollection { 4, 3 },
+                    IsHitTestVisible = false
+                };
+                OverlayCanvas.Children.Add(hLine);
+            }
+        }
+
+        // 3. Marquee Selection Box
+        if ((_activeTool == ToolType.Marquee || _hasSelection) && !_selectionRect.IsEmpty && _selectionRect.Width > 2)
+        {
+            var marqueeBox = new System.Windows.Shapes.Rectangle
+            {
+                Width = _selectionRect.Width,
+                Height = _selectionRect.Height,
+                Stroke = Brushes.White,
+                StrokeThickness = 1.0,
+                StrokeDashArray = new DoubleCollection { 4, 4 },
+                IsHitTestVisible = false
+            };
+            var marqueeBoxDark = new System.Windows.Shapes.Rectangle
+            {
+                Width = _selectionRect.Width,
+                Height = _selectionRect.Height,
+                Stroke = Brushes.Black,
+                StrokeThickness = 1.0,
+                StrokeDashArray = new DoubleCollection { 4, 4 },
+                StrokeDashOffset = 4,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(marqueeBox, _selectionRect.X);
+            Canvas.SetTop(marqueeBox, _selectionRect.Y);
+            Canvas.SetLeft(marqueeBoxDark, _selectionRect.X);
+            Canvas.SetTop(marqueeBoxDark, _selectionRect.Y);
+            OverlayCanvas.Children.Add(marqueeBoxDark);
+            OverlayCanvas.Children.Add(marqueeBox);
+        }
+
+        // 4. Dynamic Brush / Eraser Circular Reticle
+        if ((_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser) && _currentCanvasMouse.HasValue)
+        {
+            var mp = _currentCanvasMouse.Value;
+            if (mp.X >= 0 && mp.X <= _canvasWidth && mp.Y >= 0 && mp.Y <= _canvasHeight)
+            {
+                double radius = SliderBrushSize.Value / 2.0;
+                var reticleOuter = new System.Windows.Shapes.Ellipse
+                {
+                    Width = Math.Max(2, radius * 2),
+                    Height = Math.Max(2, radius * 2),
+                    Stroke = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
+                    StrokeThickness = 1.5,
+                    IsHitTestVisible = false
+                };
+                var reticleInner = new System.Windows.Shapes.Ellipse
+                {
+                    Width = Math.Max(2, radius * 2 - 1),
+                    Height = Math.Max(2, radius * 2 - 1),
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1.0,
+                    IsHitTestVisible = false
+                };
+
+                Canvas.SetLeft(reticleOuter, mp.X - radius);
+                Canvas.SetTop(reticleOuter, mp.Y - radius);
+                Canvas.SetLeft(reticleInner, mp.X - radius + 0.5);
+                Canvas.SetTop(reticleInner, mp.Y - radius + 0.5);
+
+                OverlayCanvas.Children.Add(reticleOuter);
+                OverlayCanvas.Children.Add(reticleInner);
+            }
+        }
     }
 
     private void CommitAction(string description)
@@ -257,6 +480,17 @@ public partial class MainWindow : Window
                 RenderComposite();
             }
         }
+        else if (_activeTool == ToolType.Marquee)
+        {
+            _selectionRect = new Rect(pt, pt);
+            _hasSelection = false;
+            UpdateOverlays(pt);
+        }
+        else if (_activeTool == ToolType.Crop)
+        {
+            _cropRect = new Rect(pt, pt);
+            UpdateOverlays(pt);
+        }
         else if (_activeTool == ToolType.Fill)
         {
             if (_activeLayer != null && _activeLayer.Type == LayerType.Raster && !_activeLayer.IsLocked && _activeLayer.Bitmap != null)
@@ -304,9 +538,34 @@ public partial class MainWindow : Window
         Point pt = e.GetPosition(ImgComposite);
         TxtStatusCoords.Text = $"X: {(int)pt.X}, Y: {(int)pt.Y}";
 
+        // Update overlays (brush ring, transform gizmo, etc.)
+        UpdateOverlays(pt);
+
         if (!_isInteracting) return;
 
-        if ((_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser) && _activeLayer != null && _activeLayer.Bitmap != null)
+        if (_activeTool == ToolType.Marquee)
+        {
+            _selectionRect = new Rect(
+                Math.Min(_dragStart.X, pt.X),
+                Math.Min(_dragStart.Y, pt.Y),
+                Math.Abs(pt.X - _dragStart.X),
+                Math.Abs(pt.Y - _dragStart.Y)
+            );
+            UpdateOverlays(pt);
+            return;
+        }
+        else if (_activeTool == ToolType.Crop)
+        {
+            _cropRect = new Rect(
+                Math.Min(_dragStart.X, pt.X),
+                Math.Min(_dragStart.Y, pt.Y),
+                Math.Max(20, Math.Abs(pt.X - _dragStart.X)),
+                Math.Max(20, Math.Abs(pt.Y - _dragStart.Y))
+            );
+            UpdateOverlays(pt);
+            return;
+        }
+        else if ((_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser) && _activeLayer != null && _activeLayer.Bitmap != null)
         {
             Point localLast = new Point(_lastPoint.X - _activeLayer.X, _lastPoint.Y - _activeLayer.Y);
             Point localCurrent = new Point(pt.X - _activeLayer.X, pt.Y - _activeLayer.Y);
@@ -345,7 +604,20 @@ public partial class MainWindow : Window
         if (!_isInteracting) return;
         _isInteracting = false;
 
-        if (_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser)
+        if (_activeTool == ToolType.Marquee)
+        {
+            _hasSelection = _selectionRect.Width > 5 && _selectionRect.Height > 5;
+            UpdateOverlays();
+        }
+        else if (_activeTool == ToolType.Crop)
+        {
+            if (_cropRect.Width < 10 || _cropRect.Height < 10)
+            {
+                _cropRect = new Rect(0.1 * _canvasWidth, 0.1 * _canvasHeight, 0.8 * _canvasWidth, 0.8 * _canvasHeight);
+            }
+            UpdateOverlays();
+        }
+        else if (_activeTool == ToolType.Brush || _activeTool == ToolType.Eraser)
         {
             _activeLayer?.UpdateThumbnail();
             CommitAction(_activeTool == ToolType.Brush ? "Brush Stroke" : "Eraser");
@@ -404,12 +676,19 @@ public partial class MainWindow : Window
             OptionsBrush.Visibility = (tool == ToolType.Brush || tool == ToolType.Eraser) ? Visibility.Visible : Visibility.Collapsed;
             OptionsCrop.Visibility = tool == ToolType.Crop ? Visibility.Visible : Visibility.Collapsed;
             OptionsMarquee.Visibility = tool == ToolType.Marquee ? Visibility.Visible : Visibility.Collapsed;
+
+            if (tool == ToolType.Crop && (_cropRect.IsEmpty || _cropRect.Width == 0))
+            {
+                _cropRect = new Rect(0.1 * _canvasWidth, 0.1 * _canvasHeight, 0.8 * _canvasWidth, 0.8 * _canvasHeight);
+            }
+            UpdateOverlays();
         }
     }
 
     private void BrushSize_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (TxtBrushSizeVal != null) TxtBrushSizeVal.Text = $"{(int)e.NewValue}px";
+        UpdateOverlays();
     }
 
     private void BrushOpacity_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -437,6 +716,7 @@ public partial class MainWindow : Window
         {
             SliderLayerOpacity.Value = _activeLayer.Opacity * 100;
         }
+        UpdateOverlays();
     }
 
     private void BlendMode_Changed(object sender, SelectionChangedEventArgs e)
@@ -799,10 +1079,89 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ApplyCrop_Click(object sender, RoutedEventArgs e) { }
-    private void CancelCrop_Click(object sender, RoutedEventArgs e) { ToolSelect.IsChecked = true; Tool_Changed(ToolSelect, null!); }
-    private void ClearSelection_Click(object sender, RoutedEventArgs e) { }
-    private void DeleteSelection_Click(object sender, RoutedEventArgs e) { }
+    private void ApplyCrop_Click(object sender, RoutedEventArgs e)
+    {
+        if (_cropRect.Width > 10 && _cropRect.Height > 10)
+        {
+            int newW = (int)_cropRect.Width;
+            int newH = (int)_cropRect.Height;
+            double offsetX = _cropRect.X;
+            double offsetY = _cropRect.Y;
+
+            foreach (var l in _layers)
+            {
+                l.X -= offsetX;
+                l.Y -= offsetY;
+            }
+
+            _canvasWidth = newW;
+            _canvasHeight = newH;
+            _cropRect = Rect.Empty;
+            UpdateDocInfo();
+            ToolSelect.IsChecked = true;
+            Tool_Changed(ToolSelect, null!);
+            CommitAction("Crop Canvas");
+        }
+    }
+
+    private void CancelCrop_Click(object sender, RoutedEventArgs e)
+    {
+        _cropRect = Rect.Empty;
+        ToolSelect.IsChecked = true;
+        Tool_Changed(ToolSelect, null!);
+        UpdateOverlays();
+    }
+
+    private void ClearSelection_Click(object sender, RoutedEventArgs e)
+    {
+        _hasSelection = false;
+        _selectionRect = Rect.Empty;
+        UpdateOverlays();
+    }
+
+    private unsafe void DeleteSelection_Click(object sender, RoutedEventArgs e)
+    {
+        if (_hasSelection && _activeLayer != null && _activeLayer.Bitmap != null && !_activeLayer.IsLocked)
+        {
+            var bmp = _activeLayer.Bitmap;
+            int localMinX = Math.Max(0, (int)(_selectionRect.X - _activeLayer.X));
+            int localMinY = Math.Max(0, (int)(_selectionRect.Y - _activeLayer.Y));
+            int localMaxX = Math.Min(bmp.PixelWidth, (int)(_selectionRect.Right - _activeLayer.X));
+            int localMaxY = Math.Min(bmp.PixelHeight, (int)(_selectionRect.Bottom - _activeLayer.Y));
+
+            if (localMaxX > localMinX && localMaxY > localMinY)
+            {
+                bmp.Lock();
+                try
+                {
+                    int stride = bmp.BackBufferStride;
+                    byte* buf = (byte*)bmp.BackBuffer.ToPointer();
+                    for (int y = localMinY; y < localMaxY; y++)
+                    {
+                        byte* row = buf + (y * stride);
+                        for (int x = localMinX; x < localMaxX; x++)
+                        {
+                            byte* p = row + (x * 4);
+                            p[0] = 0;
+                            p[1] = 0;
+                            p[2] = 0;
+                            p[3] = 0;
+                        }
+                    }
+                    bmp.AddDirtyRect(new Int32Rect(localMinX, localMinY, localMaxX - localMinX, localMaxY - localMinY));
+                }
+                finally
+                {
+                    bmp.Unlock();
+                }
+
+                _activeLayer.UpdateThumbnail();
+                _hasSelection = false;
+                _selectionRect = Rect.Empty;
+                CommitAction("Clear Selection Area");
+            }
+        }
+    }
 
     // =========================================================================
     // KEYBOARD SHORTCUTS
