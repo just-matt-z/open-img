@@ -9,3 +9,4 @@
 | open-img-v1.0.5-build6-release-20260915-0828.zip | 0.74 MB | 2026-09-15 08:28 | v1.0.5 | 6 | release | a79398f |
 | open-img-v1.0.6-build7-release-20260915-0829.zip | 0.75 MB | 2026-09-15 08:29 | v1.0.6 | 7 | release | 59b4b93 |
 | open-img-v1.0.7-build8-release-20260915-0831.zip | 0.75 MB | 2026-09-15 08:31 | v1.0.7 | 8 | release | 6031cc2 |
+| open-img-v1.0.8-build9-release-20260915-0833.zip | 0.75 MB | 2026-09-15 08:33 | v1.0.8 | 9 | release | dc041b6 |
