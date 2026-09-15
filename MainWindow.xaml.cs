@@ -41,6 +41,12 @@ public partial class MainWindow : Window
     private Point? _currentCanvasMouse;
     private string? _currentProjectPath = null;
 
+    private Point _cloneSourcePoint = new Point(0, 0);
+    private Point _cloneTargetOrigin = new Point(0, 0);
+    private Point _lastCloneTarget = new Point(0, 0);
+    private Point _lastCloneSource = new Point(0, 0);
+    private bool _hasCloneSource = false;
+
 
 
     public MainWindow()
@@ -389,6 +395,80 @@ public partial class MainWindow : Window
                 OverlayCanvas.Children.Add(reticleInner);
             }
         }
+
+        // 5. Clone Stamp Dynamic Brush Reticle + Source Crosshair
+        if (_activeTool == ToolType.CloneStamp && _currentCanvasMouse.HasValue)
+        {
+            var mp = _currentCanvasMouse.Value;
+            if (mp.X >= 0 && mp.X <= _canvasWidth && mp.Y >= 0 && mp.Y <= _canvasHeight)
+            {
+                double radius = SliderCloneSize.Value / 2.0;
+                var reticleOuter = new System.Windows.Shapes.Ellipse
+                {
+                    Width = Math.Max(2, radius * 2),
+                    Height = Math.Max(2, radius * 2),
+                    Stroke = new SolidColorBrush(Color.FromArgb(180, 0, 122, 255)),
+                    StrokeThickness = 1.5,
+                    IsHitTestVisible = false
+                };
+                var reticleInner = new System.Windows.Shapes.Ellipse
+                {
+                    Width = Math.Max(2, radius * 2 - 1),
+                    Height = Math.Max(2, radius * 2 - 1),
+                    Stroke = Brushes.White,
+                    StrokeThickness = 1.0,
+                    IsHitTestVisible = false
+                };
+
+                Canvas.SetLeft(reticleOuter, mp.X - radius);
+                Canvas.SetTop(reticleOuter, mp.Y - radius);
+                Canvas.SetLeft(reticleInner, mp.X - radius + 0.5);
+                Canvas.SetTop(reticleInner, mp.Y - radius + 0.5);
+
+                OverlayCanvas.Children.Add(reticleOuter);
+                OverlayCanvas.Children.Add(reticleInner);
+
+                if (_hasCloneSource)
+                {
+                    Point srcPos = (ChkCloneAligned != null && ChkCloneAligned.IsChecked == true)
+                        ? _cloneSourcePoint + (mp - _cloneTargetOrigin)
+                        : (_isInteracting ? _cloneSourcePoint + (mp - _dragStart) : _cloneSourcePoint);
+
+                    // Crosshair at source location
+                    var crossCircle = new System.Windows.Shapes.Ellipse
+                    {
+                        Width = 12,
+                        Height = 12,
+                        Stroke = new SolidColorBrush(Color.FromRgb(255, 59, 48)), // iOS System Red
+                        StrokeThickness = 1.5,
+                        IsHitTestVisible = false
+                    };
+                    Canvas.SetLeft(crossCircle, srcPos.X - 6);
+                    Canvas.SetTop(crossCircle, srcPos.Y - 6);
+
+                    var hLine = new System.Windows.Shapes.Line
+                    {
+                        X1 = srcPos.X - 9, Y1 = srcPos.Y,
+                        X2 = srcPos.X + 9, Y2 = srcPos.Y,
+                        Stroke = new SolidColorBrush(Color.FromRgb(255, 59, 48)),
+                        StrokeThickness = 1.5,
+                        IsHitTestVisible = false
+                    };
+                    var vLine = new System.Windows.Shapes.Line
+                    {
+                        X1 = srcPos.X, Y1 = srcPos.Y - 9,
+                        X2 = srcPos.X, Y2 = srcPos.Y + 9,
+                        Stroke = new SolidColorBrush(Color.FromRgb(255, 59, 48)),
+                        StrokeThickness = 1.5,
+                        IsHitTestVisible = false
+                    };
+
+                    OverlayCanvas.Children.Add(crossCircle);
+                    OverlayCanvas.Children.Add(hLine);
+                    OverlayCanvas.Children.Add(vLine);
+                }
+            }
+        }
     }
 
     private void CommitAction(string description)
@@ -524,6 +604,54 @@ public partial class MainWindow : Window
             CommitAction("Add Text Layer");
             _isInteracting = false;
         }
+        else if (_activeTool == ToolType.CloneStamp)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+            {
+                _cloneSourcePoint = pt;
+                _cloneTargetOrigin = pt;
+                _hasCloneSource = true;
+                if (TxtCloneSourceStatus != null) TxtCloneSourceStatus.Text = $"Source: ({(int)pt.X}, {(int)pt.Y})";
+                TxtStatusMessage.Text = $"Clone source set to ({(int)pt.X}, {(int)pt.Y})";
+                UpdateOverlays(pt);
+                _isInteracting = false;
+                return;
+            }
+
+            if (!_hasCloneSource)
+            {
+                if (TxtCloneSourceStatus != null) TxtCloneSourceStatus.Text = "Alt+Click to set source first!";
+                TxtStatusMessage.Text = "Hold Alt and Click to sample a clone source point";
+                return;
+            }
+
+            if (_activeLayer != null && _activeLayer.Type == LayerType.Raster && !_activeLayer.IsLocked && _activeLayer.Bitmap != null)
+            {
+                if (ChkCloneAligned != null && ChkCloneAligned.IsChecked == true && _cloneTargetOrigin == _cloneSourcePoint)
+                {
+                    _cloneTargetOrigin = pt;
+                }
+
+                Point srcPt = (ChkCloneAligned != null && ChkCloneAligned.IsChecked == true)
+                    ? _cloneSourcePoint + (pt - _cloneTargetOrigin)
+                    : _cloneSourcePoint;
+
+                _lastCloneTarget = pt;
+                _lastCloneSource = srcPt;
+
+                int size = (int)SliderCloneSize.Value;
+                double opacity = SliderCloneOpacity.Value / 100.0;
+                double hardness = SliderCloneHardness != null ? SliderCloneHardness.Value / 100.0 : 0.5;
+
+                int localTargetX = (int)(pt.X - _activeLayer.X);
+                int localTargetY = (int)(pt.Y - _activeLayer.Y);
+                int localSourceX = (int)(srcPt.X - _activeLayer.X);
+                int localSourceY = (int)(srcPt.Y - _activeLayer.Y);
+
+                DrawingEngine.DrawCloneStamp(_activeLayer.Bitmap, _activeLayer.Bitmap, localTargetX, localTargetY, localSourceX, localSourceY, size / 2, opacity, hardness);
+                RenderComposite();
+            }
+        }
     }
 
     private void Canvas_MouseMove(object sender, MouseEventArgs e)
@@ -580,6 +708,27 @@ public partial class MainWindow : Window
             _lastPoint = pt;
             RenderComposite();
         }
+        else if (_activeTool == ToolType.CloneStamp && _activeLayer != null && _activeLayer.Bitmap != null)
+        {
+            Point currentTarget = pt;
+            Point currentSource = (ChkCloneAligned != null && ChkCloneAligned.IsChecked == true)
+                ? _cloneSourcePoint + (pt - _cloneTargetOrigin)
+                : _cloneSourcePoint + (pt - _dragStart);
+
+            Point localLastTarget = new Point(_lastCloneTarget.X - _activeLayer.X, _lastCloneTarget.Y - _activeLayer.Y);
+            Point localCurTarget = new Point(currentTarget.X - _activeLayer.X, currentTarget.Y - _activeLayer.Y);
+            Point localLastSource = new Point(_lastCloneSource.X - _activeLayer.X, _lastCloneSource.Y - _activeLayer.Y);
+            Point localCurSource = new Point(currentSource.X - _activeLayer.X, currentSource.Y - _activeLayer.Y);
+
+            int size = (int)SliderCloneSize.Value;
+            double opacity = SliderCloneOpacity.Value / 100.0;
+            double hardness = SliderCloneHardness != null ? SliderCloneHardness.Value / 100.0 : 0.5;
+
+            DrawingEngine.DrawCloneLine(_activeLayer.Bitmap, _activeLayer.Bitmap, localLastTarget, localCurTarget, localLastSource, localCurSource, size / 2, opacity, hardness);
+            _lastCloneTarget = currentTarget;
+            _lastCloneSource = currentSource;
+            RenderComposite();
+        }
         else if (_activeTool == ToolType.Select && _activeLayer != null && !_activeLayer.IsLocked)
         {
             double dx = pt.X - _lastPoint.X;
@@ -624,6 +773,11 @@ public partial class MainWindow : Window
         {
             _activeLayer?.UpdateThumbnail();
             CommitAction(_activeTool == ToolType.Brush ? "Brush Stroke" : "Eraser");
+        }
+        else if (_activeTool == ToolType.CloneStamp)
+        {
+            _activeLayer?.UpdateThumbnail();
+            CommitAction("Clone Stamp");
         }
         else if (_activeTool == ToolType.Select)
         {
@@ -680,6 +834,12 @@ public partial class MainWindow : Window
             OptionsBrush.Visibility = (tool == ToolType.Brush || tool == ToolType.Eraser) ? Visibility.Visible : Visibility.Collapsed;
             OptionsCrop.Visibility = tool == ToolType.Crop ? Visibility.Visible : Visibility.Collapsed;
             OptionsMarquee.Visibility = tool == ToolType.Marquee ? Visibility.Visible : Visibility.Collapsed;
+            OptionsCloneStamp.Visibility = tool == ToolType.CloneStamp ? Visibility.Visible : Visibility.Collapsed;
+
+            if (tool == ToolType.CloneStamp)
+            {
+                TxtStatusMessage.Text = _hasCloneSource ? "Clone Stamp: Drag to paint sampled pixels. Alt+Click to re-sample." : "Clone Stamp: Hold Alt and Click canvas to sample source point.";
+            }
 
             if (tool == ToolType.Crop && (_cropRect.IsEmpty || _cropRect.Width == 0))
             {
@@ -687,6 +847,22 @@ public partial class MainWindow : Window
             }
             UpdateOverlays();
         }
+    }
+
+    private void CloneSize_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (TxtCloneSizeVal != null) TxtCloneSizeVal.Text = $"{(int)e.NewValue}px";
+        UpdateOverlays();
+    }
+
+    private void CloneOpacity_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (TxtCloneOpacityVal != null) TxtCloneOpacityVal.Text = $"{(int)e.NewValue}%";
+    }
+
+    private void CloneHardness_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (TxtCloneHardnessVal != null) TxtCloneHardnessVal.Text = $"{(int)e.NewValue}%";
     }
 
     private void BrushSize_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1525,6 +1701,7 @@ public partial class MainWindow : Window
         else if (e.Key == Key.C) { ToolCrop.IsChecked = true; Tool_Changed(ToolCrop, null!); }
         else if (e.Key == Key.B) { ToolBrush.IsChecked = true; Tool_Changed(ToolBrush, null!); }
         else if (e.Key == Key.E) { ToolEraser.IsChecked = true; Tool_Changed(ToolEraser, null!); }
+        else if (e.Key == Key.S) { ToolCloneStamp.IsChecked = true; Tool_Changed(ToolCloneStamp, null!); }
         else if (e.Key == Key.G) { ToolFill.IsChecked = true; Tool_Changed(ToolFill, null!); }
         else if (e.Key == Key.T) { ToolText.IsChecked = true; Tool_Changed(ToolText, null!); }
         else if (e.Key == Key.U) { ToolShape.IsChecked = true; Tool_Changed(ToolShape, null!); }

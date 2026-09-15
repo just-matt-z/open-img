@@ -11,7 +11,8 @@ public enum ToolType
     Fill,       // G (Paint Bucket / Flood Fill)
     Text,       // T (Vector Text)
     Shape,      // U (Vector Shape)
-    Eyedropper  // I (Color Picker)
+    Eyedropper, // I (Color Picker)
+    CloneStamp  // S (Clone Stamp / Sampling)
 }
 
 public enum LayerType

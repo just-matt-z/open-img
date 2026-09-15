@@ -130,6 +130,28 @@
                     <Button Content="Clear" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="ClearSelection_Click" Margin="0,0,8,0" />
                     <Button Content="Delete Inside" Style="{StaticResource IOS7DestructiveButtonStyle}" Click="DeleteSelection_Click" />
                 </StackPanel>
+
+                <!-- Clone Stamp Options -->
+                <StackPanel x:Name="OptionsCloneStamp" Orientation="Horizontal" VerticalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="CLONE STAMP" FontSize="11" FontWeight="Bold" Foreground="{StaticResource SystemBlueBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                    <TextBlock Text="SIZE" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Slider x:Name="SliderCloneSize" Minimum="2" Maximum="200" Value="28" Width="90" Style="{StaticResource IOS7SliderStyle}" ValueChanged="CloneSize_Changed" />
+                    <TextBlock x:Name="TxtCloneSizeVal" Text="28px" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,16,0" Width="36" />
+
+                    <TextBlock Text="OPACITY" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Slider x:Name="SliderCloneOpacity" Minimum="1" Maximum="100" Value="100" Width="90" Style="{StaticResource IOS7SliderStyle}" ValueChanged="CloneOpacity_Changed" />
+                    <TextBlock x:Name="TxtCloneOpacityVal" Text="100%" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,16,0" Width="36" />
+
+                    <TextBlock Text="HARDNESS" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Slider x:Name="SliderCloneHardness" Minimum="0" Maximum="100" Value="50" Width="80" Style="{StaticResource IOS7SliderStyle}" ValueChanged="CloneHardness_Changed" />
+                    <TextBlock x:Name="TxtCloneHardnessVal" Text="50%" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,16,0" Width="36" />
+
+                    <CheckBox x:Name="ChkCloneAligned" Content="Aligned" IsChecked="True" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,16,0" Style="{StaticResource IOS7CheckBoxStyle}" />
+
+                    <Border Background="#10767680" CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtCloneSourceStatus" Text="Source: Alt+Click canvas to sample" FontSize="11" FontWeight="Medium" Foreground="{StaticResource ThemeTextSecondaryBrush}" />
+                    </Border>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -195,6 +217,9 @@
                     </RadioButton>
                     <RadioButton x:Name="ToolEraser" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Eraser (E)" Click="Tool_Changed" Tag="Eraser">
                         <TextBlock Text="⌫" FontSize="16" />
+                    </RadioButton>
+                    <RadioButton x:Name="ToolCloneStamp" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Clone Stamp (S) - Alt+Click to sample source" Click="Tool_Changed" Tag="CloneStamp">
+                        <TextBlock Text="⎘" FontSize="18" />
                     </RadioButton>
                     <RadioButton x:Name="ToolFill" Style="{StaticResource IOS7ToolButtonStyle}" ToolTip="Paint Bucket (G)" Click="Tool_Changed" Tag="Fill">
                         <TextBlock Text="⯌" FontSize="16" />
@@ -410,6 +435,7 @@
                     <TextBlock x:Name="TxtStatusTool" Text="Tool: SELECT" FontSize="11" FontWeight="SemiBold" Margin="0,0,16,0" />
                     <TextBlock x:Name="TxtStatusDimensions" Text="1920 × 1080 px" FontSize="11" Margin="0,0,16,0" Foreground="{StaticResource ThemeTextSecondaryBrush}" />
                     <TextBlock x:Name="TxtStatusZoom" Text="Zoom: 60%" FontSize="11" Foreground="{StaticResource ThemeTextSecondaryBrush}" />
+                    <TextBlock x:Name="TxtStatusMessage" Text="Ready" FontSize="11" Margin="24,0,0,0" Foreground="{StaticResource SystemBlueBrush}" FontWeight="Medium" />
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
