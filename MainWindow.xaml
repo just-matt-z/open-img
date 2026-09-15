@@ -46,11 +46,12 @@
                         <TextBlock Text="PRO" FontSize="9" FontWeight="Bold" Foreground="{StaticResource SystemBlueBrush}" />
                     </Border>
 
-                    <!-- New & Open Buttons -->
+                    <!-- New, Open & Save Buttons -->
                     <Border Background="#10767680" CornerRadius="6" Padding="2" Margin="0,0,14,0">
                         <StackPanel Orientation="Horizontal">
                             <Button Content="New" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="NewCanvas_Click" />
                             <Button Content="Open" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="OpenFile_Click" />
+                            <Button Content="Save" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="SaveProject_Click" ToolTip="Save Multi-Layer Project (.openimg, Ctrl+S)" />
                         </StackPanel>
                     </Border>
 
