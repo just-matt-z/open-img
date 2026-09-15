@@ -6,6 +6,7 @@ obj/
 *.userosscache
 *.sln.docstates
 .vs/
+*_wpftmp.csproj
 
 # Builds and exported artifacts
 builds/

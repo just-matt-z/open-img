@@ -290,9 +290,16 @@ public static class ImageCompositor
             float bright = (float)(adj.Brightness / 100.0f);
             float contrast = (float)Math.Pow((100.0f + adj.Contrast) / 100.0f, 2);
             float sat = (float)((100.0f + adj.Saturation + adj.Vibrance * 0.75f) / 100.0f);
+            float warmth = (float)(adj.Warmth / 200.0f);
+            float tint = (float)(adj.Tint / 200.0f);
+            float vignetteStrength = (float)(adj.Vignette / 100.0f);
             bool invert = adj.Invert;
             bool gray = adj.Grayscale;
             bool sepia = adj.Sepia;
+
+            float centerX = width / 2.0f;
+            float centerY = height / 2.0f;
+            float maxDistSq = centerX * centerX + centerY * centerY;
 
             for (int y = 0; y < height; y++)
             {
@@ -324,7 +331,7 @@ public static class ImageCompositor
                         b = (b - 0.5f) * contrast + 0.5f;
                     }
 
-                    // Saturation
+                    // Saturation & Vibrance
                     if (sat != 1.0f || gray)
                     {
                         float luminance = 0.299f * r + 0.587f * g + 0.114f * b;
@@ -340,6 +347,35 @@ public static class ImageCompositor
                             g = luminance + (g - luminance) * sat;
                             b = luminance + (b - luminance) * sat;
                         }
+                    }
+
+                    // Color Temperature (Warmth)
+                    if (warmth != 0)
+                    {
+                        r += warmth * 0.35f;
+                        g += warmth * 0.10f;
+                        b -= warmth * 0.35f;
+                    }
+
+                    // Tint (Green vs Magenta)
+                    if (tint != 0)
+                    {
+                        r += tint * 0.25f;
+                        g -= tint * 0.25f;
+                        b += tint * 0.25f;
+                    }
+
+                    // Lens Vignette
+                    if (vignetteStrength > 0.001f)
+                    {
+                        float dx = x - centerX;
+                        float dy = y - centerY;
+                        float distSq = dx * dx + dy * dy;
+                        float normDist = distSq / maxDistSq;
+                        float vigFactor = 1.0f - (normDist * vignetteStrength * 0.75f);
+                        r *= vigFactor;
+                        g *= vigFactor;
+                        b *= vigFactor;
                     }
 
                     // Invert
@@ -364,6 +400,191 @@ public static class ImageCompositor
                     p[0] = (byte)Math.Clamp((int)(b * 255), 0, 255);
                     p[1] = (byte)Math.Clamp((int)(g * 255), 0, 255);
                     p[2] = (byte)Math.Clamp((int)(r * 255), 0, 255);
+                }
+            }
+
+            bmp.AddDirtyRect(new Int32Rect(0, 0, width, height));
+        }
+        finally
+        {
+            bmp.Unlock();
+        }
+    }
+
+    /// <summary>
+    /// Applies a 3x3 spatial convolution kernel to a WriteableBitmap
+    /// </summary>
+    public static unsafe void ApplyConvolutionKernel(WriteableBitmap bmp, float[] kernel, float factor = 1.0f, float bias = 0.0f)
+    {
+        if (bmp == null || kernel == null || kernel.Length < 9) return;
+
+        int width = bmp.PixelWidth;
+        int height = bmp.PixelHeight;
+
+        uint[] srcCopy = new uint[width * height];
+        bmp.Lock();
+        try
+        {
+            byte* scan0 = (byte*)bmp.BackBuffer;
+            int stride = bmp.BackBufferStride;
+
+            for (int y = 0; y < height; y++)
+            {
+                byte* row = scan0 + (y * stride);
+                for (int x = 0; x < width; x++)
+                {
+                    srcCopy[y * width + x] = *(uint*)(row + (x * 4));
+                }
+            }
+
+            for (int y = 1; y < height - 1; y++)
+            {
+                byte* dstRow = scan0 + (y * stride);
+
+                for (int x = 1; x < width - 1; x++)
+                {
+                    float r = 0, g = 0, b = 0;
+                    int k = 0;
+
+                    for (int ky = -1; ky <= 1; ky++)
+                    {
+                        int py = y + ky;
+                        for (int kx = -1; kx <= 1; kx++)
+                        {
+                            int px = x + kx;
+                            uint pixel = srcCopy[py * width + px];
+                            float kw = kernel[k++];
+
+                            r += ((pixel >> 16) & 0xFF) * kw;
+                            g += ((pixel >> 8) & 0xFF) * kw;
+                            b += (pixel & 0xFF) * kw;
+                        }
+                    }
+
+                    byte* dst = dstRow + (x * 4);
+                    dst[0] = (byte)Math.Clamp((int)(b * factor + bias), 0, 255);
+                    dst[1] = (byte)Math.Clamp((int)(g * factor + bias), 0, 255);
+                    dst[2] = (byte)Math.Clamp((int)(r * factor + bias), 0, 255);
+                }
+            }
+
+            bmp.AddDirtyRect(new Int32Rect(0, 0, width, height));
+        }
+        finally
+        {
+            bmp.Unlock();
+        }
+    }
+
+    /// <summary>
+    /// Applies high-pass unsharp filter to crisp edges
+    /// </summary>
+    public static void ApplySharpen(WriteableBitmap bmp)
+    {
+        float[] kernel = {
+             0, -1,  0,
+            -1,  5, -1,
+             0, -1,  0
+        };
+        ApplyConvolutionKernel(bmp, kernel, 1.0f, 0.0f);
+    }
+
+    /// <summary>
+    /// Applies edge detection filter
+    /// </summary>
+    public static void ApplyEdgeDetect(WriteableBitmap bmp)
+    {
+        float[] kernel = {
+            -1, -1, -1,
+            -1,  8, -1,
+            -1, -1, -1
+        };
+        ApplyConvolutionKernel(bmp, kernel, 1.0f, 0.0f);
+    }
+
+    /// <summary>
+    /// Applies relief emboss filter
+    /// </summary>
+    public static void ApplyEmboss(WriteableBitmap bmp)
+    {
+        float[] kernel = {
+            -2, -1,  0,
+            -1,  1,  1,
+             0,  1,  2
+        };
+        ApplyConvolutionKernel(bmp, kernel, 1.0f, 128.0f);
+    }
+
+    /// <summary>
+    /// Fast 2-pass separable box Gaussian blur
+    /// </summary>
+    public static unsafe void ApplyGaussianBlur(WriteableBitmap bmp, int radius = 3)
+    {
+        if (bmp == null || radius < 1) return;
+        int width = bmp.PixelWidth;
+        int height = bmp.PixelHeight;
+
+        uint[] src = new uint[width * height];
+        uint[] intermediate = new uint[width * height];
+
+        bmp.Lock();
+        try
+        {
+            byte* scan0 = (byte*)bmp.BackBuffer;
+            int stride = bmp.BackBufferStride;
+
+            for (int y = 0; y < height; y++)
+            {
+                byte* row = scan0 + (y * stride);
+                for (int x = 0; x < width; x++)
+                {
+                    src[y * width + x] = *(uint*)(row + (x * 4));
+                }
+            }
+
+            int kernelSize = radius * 2 + 1;
+            for (int y = 0; y < height; y++)
+            {
+                int rowOffset = y * width;
+                for (int x = 0; x < width; x++)
+                {
+                    int r = 0, g = 0, b = 0, a = 0;
+                    for (int k = -radius; k <= radius; k++)
+                    {
+                        int px = Math.Clamp(x + k, 0, width - 1);
+                        uint pixel = src[rowOffset + px];
+                        a += (int)((pixel >> 24) & 0xFF);
+                        r += (int)((pixel >> 16) & 0xFF);
+                        g += (int)((pixel >> 8) & 0xFF);
+                        b += (int)(pixel & 0xFF);
+                    }
+                    intermediate[rowOffset + x] = ((uint)(a / kernelSize) << 24) |
+                                                  ((uint)(r / kernelSize) << 16) |
+                                                  ((uint)(g / kernelSize) << 8) |
+                                                  (uint)(b / kernelSize);
+                }
+            }
+
+            for (int y = 0; y < height; y++)
+            {
+                byte* row = scan0 + (y * stride);
+                for (int x = 0; x < width; x++)
+                {
+                    int r = 0, g = 0, b = 0, a = 0;
+                    for (int k = -radius; k <= radius; k++)
+                    {
+                        int py = Math.Clamp(y + k, 0, height - 1);
+                        uint pixel = intermediate[py * width + x];
+                        a += (int)((pixel >> 24) & 0xFF);
+                        r += (int)((pixel >> 16) & 0xFF);
+                        g += (int)((pixel >> 8) & 0xFF);
+                        b += (int)(pixel & 0xFF);
+                    }
+                    byte* p = row + (x * 4);
+                    p[0] = (byte)(b / kernelSize);
+                    p[1] = (byte)(g / kernelSize);
+                    p[2] = (byte)(r / kernelSize);
+                    p[3] = (byte)(a / kernelSize);
                 }
             }
 
