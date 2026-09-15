@@ -1079,6 +1079,132 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CropRatio_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is string tag)
+        {
+            double ratio = tag switch
+            {
+                "1:1" => 1.0,
+                "16:9" => 16.0 / 9.0,
+                "4:3" => 4.0 / 3.0,
+                _ => 1.0
+            };
+
+            double targetW = _canvasWidth * 0.75;
+            double targetH = targetW / ratio;
+
+            if (targetH > _canvasHeight * 0.85)
+            {
+                targetH = _canvasHeight * 0.75;
+                targetW = targetH * ratio;
+            }
+
+            double x = (_canvasWidth - targetW) / 2;
+            double y = (_canvasHeight - targetH) / 2;
+            _cropRect = new Rect(x, y, targetW, targetH);
+            UpdateOverlays();
+        }
+    }
+
+    private void SelectAll_Click(object sender, RoutedEventArgs e)
+    {
+        ToolMarquee.IsChecked = true;
+        Tool_Changed(ToolMarquee, null!);
+        _selectionRect = new Rect(0, 0, _canvasWidth, _canvasHeight);
+        _hasSelection = true;
+        UpdateOverlays();
+    }
+
+    private void CopySelection_Click(object sender, RoutedEventArgs e)
+    {
+        CopyToClipboard();
+    }
+
+    private void CopyToClipboard()
+    {
+        try
+        {
+            if (_hasSelection && !_selectionRect.IsEmpty && _activeLayer != null && _activeLayer.Bitmap != null)
+            {
+                int localX = Math.Max(0, (int)(_selectionRect.X - _activeLayer.X));
+                int localY = Math.Max(0, (int)(_selectionRect.Y - _activeLayer.Y));
+                int w = Math.Min(_activeLayer.Bitmap.PixelWidth - localX, (int)_selectionRect.Width);
+                int h = Math.Min(_activeLayer.Bitmap.PixelHeight - localY, (int)_selectionRect.Height);
+
+                if (w > 0 && h > 0)
+                {
+                    var cropped = new CroppedBitmap(_activeLayer.Bitmap, new Int32Rect(localX, localY, w, h));
+                    Clipboard.SetImage(cropped);
+                }
+            }
+            else if (_activeLayer?.Bitmap != null)
+            {
+                Clipboard.SetImage(_activeLayer.Bitmap);
+            }
+            else
+            {
+                var comp = ImageCompositor.RenderComposite(_canvasWidth, _canvasHeight, _layers, _adjustments, includeCheckerboard: true);
+                Clipboard.SetImage(comp);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Clipboard copy failed: {ex.Message}", "Copy Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void PasteFromClipboard()
+    {
+        try
+        {
+            if (Clipboard.ContainsImage())
+            {
+                var src = Clipboard.GetImage();
+                if (src != null)
+                {
+                    var wb = new WriteableBitmap(src);
+                    string name = $"Pasted Layer {_layers.Count + 1}";
+                    var layer = new Layer(name, wb.PixelWidth, wb.PixelHeight, LayerType.Raster)
+                    {
+                        Bitmap = wb,
+                        X = Math.Max(0, (_canvasWidth - wb.PixelWidth) / 2),
+                        Y = Math.Max(0, (_canvasHeight - wb.PixelHeight) / 2)
+                    };
+                    _layers.Add(layer);
+                    _activeLayer = layer;
+                    LayersListBox.SelectedItem = layer;
+                    CommitAction("Paste Image");
+                }
+            }
+            else if (Clipboard.ContainsFileDropList())
+            {
+                var files = Clipboard.GetFileDropList();
+                if (files.Count > 0 && !string.IsNullOrEmpty(files[0]) && File.Exists(files[0]))
+                {
+                    LoadImageFromFile(files[0]!);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Clipboard paste failed: {ex.Message}", "Paste Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void CutToClipboard()
+    {
+        CopyToClipboard();
+        if (_hasSelection)
+        {
+            DeleteSelection_Click(null!, null!);
+        }
+        else if (_activeLayer != null)
+        {
+            DeleteLayer_Click(null!, null!);
+        }
+    }
+
     private void ApplyCrop_Click(object sender, RoutedEventArgs e)
     {
         if (_cropRect.Width > 10 && _cropRect.Height > 10)
@@ -1179,6 +1305,31 @@ public partial class MainWindow : Window
             Redo_Click(null!, null!);
             e.Handled = true;
         }
+        else if (e.Key == Key.V && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            PasteFromClipboard();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            CopyToClipboard();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.X && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            CutToClipboard();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            SelectAll_Click(null!, null!);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            ClearSelection_Click(null!, null!);
+            e.Handled = true;
+        }
         else if (e.Key == Key.N && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
         {
             NewCanvas_Click(null!, null!);
@@ -1209,6 +1360,17 @@ public partial class MainWindow : Window
         else if (e.Key == Key.U) { ToolShape.IsChecked = true; Tool_Changed(ToolShape, null!); }
         else if (e.Key == Key.I) { ToolEyedropper.IsChecked = true; Tool_Changed(ToolEyedropper, null!); }
         else if (e.Key == Key.X) { ColorChip_MouseDown(null!, null!); }
-        else if (e.Key == Key.Delete) { DeleteLayer_Click(null!, null!); }
+        else if (e.Key == Key.Delete)
+        {
+            if (_hasSelection)
+            {
+                DeleteSelection_Click(null!, null!);
+            }
+            else
+            {
+                DeleteLayer_Click(null!, null!);
+            }
+            e.Handled = true;
+        }
     }
 }
