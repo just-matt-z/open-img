@@ -126,6 +126,160 @@ public static class DrawingEngine
     }
 
     /// <summary>
+    /// Clones pixels from source coordinates to target coordinates with hardness falloff
+    /// </summary>
+    public static unsafe void DrawCloneStamp(WriteableBitmap targetBmp, WriteableBitmap sourceBmp, int targetCenterX, int targetCenterY, int sourceCenterX, int sourceCenterY, int radius, double opacity, double hardness = 0.5)
+    {
+        if (targetBmp == null || sourceBmp == null || radius <= 0) return;
+
+        int tWidth = targetBmp.PixelWidth;
+        int tHeight = targetBmp.PixelHeight;
+        int sWidth = sourceBmp.PixelWidth;
+        int sHeight = sourceBmp.PixelHeight;
+
+        int minTX = Math.Max(0, targetCenterX - radius);
+        int maxTX = Math.Min(tWidth - 1, targetCenterX + radius);
+        int minTY = Math.Max(0, targetCenterY - radius);
+        int maxTY = Math.Min(tHeight - 1, targetCenterY + radius);
+
+        if (minTX > maxTX || minTY > maxTY) return;
+
+        int rSquared = radius * radius;
+        float alphaFactor = (float)Math.Clamp(opacity, 0.0, 1.0);
+        float hard = (float)Math.Clamp(hardness, 0.0, 1.0);
+
+        int dabW = maxTX - minTX + 1;
+        int dabH = maxTY - minTY + 1;
+        uint[] sampleBuffer = new uint[dabW * dabH];
+
+        sourceBmp.Lock();
+        try
+        {
+            byte* sScan0 = (byte*)sourceBmp.BackBuffer;
+            int sStride = sourceBmp.BackBufferStride;
+
+            for (int y = 0; y < dabH; y++)
+            {
+                int curTY = minTY + y;
+                int curSY = sourceCenterY + (curTY - targetCenterY);
+
+                if (curSY >= 0 && curSY < sHeight)
+                {
+                    byte* sRow = sScan0 + (curSY * sStride);
+                    for (int x = 0; x < dabW; x++)
+                    {
+                        int curTX = minTX + x;
+                        int curSX = sourceCenterX + (curTX - targetCenterX);
+
+                        if (curSX >= 0 && curSX < sWidth)
+                        {
+                            sampleBuffer[y * dabW + x] = *(uint*)(sRow + (curSX * 4));
+                        }
+                    }
+                }
+            }
+        }
+        finally
+        {
+            sourceBmp.Unlock();
+        }
+
+        targetBmp.Lock();
+        try
+        {
+            byte* tScan0 = (byte*)targetBmp.BackBuffer;
+            int tStride = targetBmp.BackBufferStride;
+
+            for (int y = 0; y < dabH; y++)
+            {
+                int curTY = minTY + y;
+                int dy = curTY - targetCenterY;
+                byte* tRow = tScan0 + (curTY * tStride);
+
+                for (int x = 0; x < dabW; x++)
+                {
+                    int curTX = minTX + x;
+                    int dx = curTX - targetCenterX;
+                    int distSquared = dx * dx + dy * dy;
+
+                    if (distSquared <= rSquared)
+                    {
+                        uint sampledPixel = sampleBuffer[y * dabW + x];
+                        byte srcA_orig = (byte)((sampledPixel >> 24) & 0xFF);
+                        if (srcA_orig == 0) continue;
+
+                        byte srcR = (byte)((sampledPixel >> 16) & 0xFF);
+                        byte srcG = (byte)((sampledPixel >> 8) & 0xFF);
+                        byte srcB = (byte)(sampledPixel & 0xFF);
+
+                        float distance = MathF.Sqrt(distSquared);
+                        float normDist = distance / radius;
+                        if (normDist > 1.0f) continue;
+
+                        float falloff;
+                        if (hard >= 0.98f)
+                        {
+                            falloff = Math.Clamp((float)radius - distance, 0.0f, 1.0f);
+                        }
+                        else if (normDist <= hard)
+                        {
+                            falloff = 1.0f;
+                        }
+                        else
+                        {
+                            float t = (normDist - hard) / (1.0f - hard);
+                            falloff = 1.0f - (t * t * (3.0f - 2.0f * t));
+                        }
+
+                        float pixelAlpha = alphaFactor * (srcA_orig / 255.0f) * falloff;
+                        if (pixelAlpha <= 0.001f) continue;
+
+                        byte* pixel = tRow + (curTX * 4);
+                        float dstA = (pixel[3] / 255.0f) * (1.0f - pixelAlpha);
+                        float outA = pixelAlpha + dstA;
+
+                        if (outA > 0.0001f)
+                        {
+                            pixel[0] = (byte)Math.Clamp((srcB * pixelAlpha + pixel[0] * dstA) / outA, 0, 255);
+                            pixel[1] = (byte)Math.Clamp((srcG * pixelAlpha + pixel[1] * dstA) / outA, 0, 255);
+                            pixel[2] = (byte)Math.Clamp((srcR * pixelAlpha + pixel[2] * dstA) / outA, 0, 255);
+                            pixel[3] = (byte)Math.Clamp(outA * 255, 0, 255);
+                        }
+                    }
+                }
+            }
+
+            targetBmp.AddDirtyRect(new Int32Rect(minTX, minTY, dabW, dabH));
+        }
+        finally
+        {
+            targetBmp.Unlock();
+        }
+    }
+
+    /// <summary>
+    /// Interpolates continuous clone stamp stroke between points
+    /// </summary>
+    public static void DrawCloneLine(WriteableBitmap targetBmp, WriteableBitmap sourceBmp, Point targetP1, Point targetP2, Point sourceP1, Point sourceP2, int radius, double opacity, double hardness = 0.5)
+    {
+        double dx = targetP2.X - targetP1.X;
+        double dy = targetP2.Y - targetP1.Y;
+        double dist = Math.Sqrt(dx * dx + dy * dy);
+        double step = hardness < 0.3 ? Math.Max(1.0, radius * 0.15) : Math.Max(1.0, radius * 0.30);
+        int steps = Math.Max(1, (int)Math.Ceiling(dist / step));
+
+        for (int i = 0; i <= steps; i++)
+        {
+            double t = (double)i / steps;
+            int tx = (int)Math.Round(targetP1.X + dx * t);
+            int ty = (int)Math.Round(targetP1.Y + dy * t);
+            int sx = (int)Math.Round(sourceP1.X + (sourceP2.X - sourceP1.X) * t);
+            int sy = (int)Math.Round(sourceP1.Y + (sourceP2.Y - sourceP1.Y) * t);
+            DrawCloneStamp(targetBmp, sourceBmp, tx, ty, sx, sy, radius, opacity, hardness);
+        }
+    }
+
+    /// <summary>
     /// High-speed BFS Queue Flood Fill algorithm on WriteableBitmap
     /// </summary>
     public static unsafe void FloodFill(WriteableBitmap bmp, int startX, int startY, Color fillColor, int tolerance = 32)
