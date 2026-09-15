@@ -11,8 +11,8 @@ $ErrorActionPreference = "Stop"
 $VersionFile = Join-Path $PSScriptRoot "version.properties"
 $Major = 1
 $Minor = 0
-$Patch = 0
-$BuildNumber = 1
+$Patch = 1
+$BuildNumber = 2
 
 if (Test-Path $VersionFile) {
     Get-Content $VersionFile | ForEach-Object {
@@ -47,37 +47,51 @@ BUILD_NUMBER=$BuildNumber
 
 $VersionName = "$Major.$Minor.$Patch"
 $Timestamp = Get-Date -Format "yyyyMMdd-HHmm"
-$ArtifactName = "open-img-v${VersionName}-build${BuildNumber}-${BuildType}-${Timestamp}.zip"
+$ArtifactZipName = "open-img-v${VersionName}-build${BuildNumber}-${BuildType}-${Timestamp}.zip"
+$ArtifactExeName = "open-img-v${VersionName}-build${BuildNumber}.exe"
 
 $DrivePath = "C:\Users\matth\Desktop\vibe-projects\open-img\builds\open-img-Builds"
 if (-not (Test-Path $DrivePath)) {
     New-Item -ItemType Directory -Path $DrivePath -Force | Out-Null
 }
 
-Write-Host "Building Open Image v$VersionName (Build $BuildNumber, $BuildType)..." -ForegroundColor Cyan
-npm run build
+Write-Host "Building Open Image Native Windows App v$VersionName (Build $BuildNumber, $BuildType)..." -ForegroundColor Cyan
+
+# Publish .NET 9 WPF native application
+dotnet publish -c Release -r win-x64 --self-contained false -p:Version=$VersionName -p:FileVersion=$VersionName
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Build failed with exit code $LASTEXITCODE"
+    Write-Error "dotnet publish failed with exit code $LASTEXITCODE"
     exit $LASTEXITCODE
 }
 
-$DistPath = Join-Path $PSScriptRoot "dist"
-if (-not (Test-Path $DistPath)) {
-    Write-Error "Build output directory 'dist' was not found!"
+$PublishPath = Join-Path $PSScriptRoot "bin\Release\net9.0-windows\win-x64\publish"
+if (-not (Test-Path $PublishPath)) {
+    Write-Error "Publish output directory was not found at $PublishPath!"
     exit 1
 }
 
-$DestinationArtifact = Join-Path $DrivePath $ArtifactName
-Write-Host "Packaging build artifact to $DestinationArtifact..." -ForegroundColor Cyan
-Compress-Archive -Path "$DistPath\*" -DestinationPath $DestinationArtifact -Force
-
-if (-not (Test-Path $DestinationArtifact)) {
-    Write-Error "Artifact creation failed at $DestinationArtifact"
+$ExeSource = Join-Path $PublishPath "open-img.exe"
+if (-not (Test-Path $ExeSource)) {
+    Write-Error "Published executable not found at $ExeSource!"
     exit 1
 }
 
-$FileSize = (Get-Item $DestinationArtifact).Length / 1MB
+# 1. Copy standalone .exe directly for immediate double-click execution
+$DestinationExe = Join-Path $DrivePath $ArtifactExeName
+Copy-Item $ExeSource $DestinationExe -Force
+
+# 2. Package complete publish payload to standard zip artifact
+$DestinationZip = Join-Path $DrivePath $ArtifactZipName
+Write-Host "Packaging native Windows build to $DestinationZip..." -ForegroundColor Cyan
+Compress-Archive -Path "$PublishPath\*" -DestinationPath $DestinationZip -Force
+
+if (-not (Test-Path $DestinationZip)) {
+    Write-Error "Artifact creation failed at $DestinationZip"
+    exit 1
+}
+
+$FileSize = (Get-Item $DestinationZip).Length / 1MB
 $FileSizeFormatted = [math]::Round($FileSize, 2)
 
 # Update build-history.md
@@ -87,7 +101,7 @@ try {
     $CommitHash = (git rev-parse --short HEAD) 2>$null
 } catch {}
 
-$LogEntry = "| $ArtifactName | ${FileSizeFormatted} MB | $(Get-Date -Format 'yyyy-MM-dd HH:mm') | v$VersionName | $BuildNumber | $BuildType | $CommitHash |"
+$LogEntry = "| $ArtifactZipName | ${FileSizeFormatted} MB | $(Get-Date -Format 'yyyy-MM-dd HH:mm') | v$VersionName | $BuildNumber | $BuildType | $CommitHash |"
 
 if (-not (Test-Path $HistoryFile)) {
     @"
@@ -104,6 +118,6 @@ $LogEntry
 # Also copy build-history.md to builds directory
 Copy-Item $HistoryFile -Destination (Join-Path $DrivePath "build-history.md") -Force
 
-Write-Host "Successfully built and packaged Open Image!" -ForegroundColor Green
-Write-Host "Artifact: $ArtifactName ($FileSizeFormatted MB)" -ForegroundColor Green
-Write-Host "Destination: $DestinationArtifact" -ForegroundColor Green
+Write-Host "Successfully built and packaged Open Image Native Windows App!" -ForegroundColor Green
+Write-Host "Direct Windows Executable: $DestinationExe" -ForegroundColor Green
+Write-Host "Packaged Artifact: $DestinationZip ($FileSizeFormatted MB)" -ForegroundColor Green

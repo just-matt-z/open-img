@@ -1,0 +1,223 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ==========================================================================
+         iOS 7 Color Palette Tokens
+         ========================================================================== -->
+    <Color x:Key="SystemBlueColor">#007AFF</Color>
+    <Color x:Key="SystemGreenColor">#4CD964</Color>
+    <Color x:Key="SystemRedColor">#FF3B30</Color>
+    <Color x:Key="SystemOrangeColor">#FF9500</Color>
+    <Color x:Key="SystemSkyColor">#5AC8FA</Color>
+    <Color x:Key="SystemGrayColor">#8E8E93</Color>
+
+    <SolidColorBrush x:Key="SystemBlueBrush" Color="{StaticResource SystemBlueColor}" />
+    <SolidColorBrush x:Key="SystemGreenBrush" Color="{StaticResource SystemGreenColor}" />
+    <SolidColorBrush x:Key="SystemRedBrush" Color="{StaticResource SystemRedColor}" />
+    <SolidColorBrush x:Key="SystemOrangeBrush" Color="{StaticResource SystemOrangeColor}" />
+    <SolidColorBrush x:Key="SystemSkyBrush" Color="{StaticResource SystemSkyColor}" />
+    <SolidColorBrush x:Key="SystemGrayBrush" Color="{StaticResource SystemGrayColor}" />
+
+    <!-- Day Mode Theme Brushes -->
+    <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#ECECF0" />
+    <SolidColorBrush x:Key="ThemeCanvasBackdropBrush" Color="#D6D6DD" />
+    <SolidColorBrush x:Key="ThemeCardBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ThemeBarBrush" Color="#F2F2F5" />
+    <SolidColorBrush x:Key="ThemeHairlineBrush" Color="#D1D1D6" />
+    <SolidColorBrush x:Key="ThemeHairlineLightBrush" Color="#E5E5EA" />
+    <SolidColorBrush x:Key="ThemeTextPrimaryBrush" Color="#000000" />
+    <SolidColorBrush x:Key="ThemeTextSecondaryBrush" Color="#6C6C70" />
+    <SolidColorBrush x:Key="ThemeTextTertiaryBrush" Color="#AEAEB2" />
+    <SolidColorBrush x:Key="ThemeHoverBrush" Color="#14007AFF" />
+
+    <!-- Standard Font -->
+    <FontFamily x:Key="IOS7FontFamily">-apple-system, Segoe UI, Inter, Helvetica Neue, sans-serif</FontFamily>
+
+    <!-- ==========================================================================
+         iOS 7 Primary Button (Pill Button)
+         ========================================================================== -->
+    <Style x:Key="IOS7PrimaryButtonStyle" TargetType="Button">
+        <Setter Property="FontFamily" Value="{StaticResource IOS7FontFamily}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="Background" Value="{StaticResource SystemBlueBrush}" />
+        <Setter Property="Padding" Value="14,6" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="16"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Opacity" Value="0.9" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Opacity" Value="0.65" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Opacity" Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==========================================================================
+         iOS 7 Borderless Button (Action / Navigation)
+         ========================================================================== -->
+    <Style x:Key="IOS7BorderlessButtonStyle" TargetType="Button">
+        <Setter Property="FontFamily" Value="{StaticResource IOS7FontFamily}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="{StaticResource SystemBlueBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ThemeHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Opacity" Value="0.5" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Opacity" Value="0.3" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Destructive Button -->
+    <Style x:Key="IOS7DestructiveButtonStyle" TargetType="Button" BasedOn="{StaticResource IOS7BorderlessButtonStyle}">
+        <Setter Property="Foreground" Value="{StaticResource SystemRedBrush}" />
+    </Style>
+
+    <!-- ==========================================================================
+         iOS 7 Left Tool Palette Button
+         ========================================================================== -->
+    <Style x:Key="IOS7ToolButtonStyle" TargetType="RadioButton">
+        <Setter Property="Width" Value="38" />
+        <Setter Property="Height" Value="38" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="btnBorder"
+                            Background="Transparent"
+                            CornerRadius="8">
+                        <Grid>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="btnBorder" Property="Background" Value="{StaticResource ThemeHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="btnBorder" Property="Background" Value="{StaticResource SystemBlueBrush}" />
+                            <Setter Property="Foreground" Value="#FFFFFF" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==========================================================================
+         iOS 7 Segmented Control RadioButton
+         ========================================================================== -->
+    <Style x:Key="IOS7SegmentedButtonStyle" TargetType="RadioButton">
+        <Setter Property="FontFamily" Value="{StaticResource IOS7FontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource ThemeTextSecondaryBrush}" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="border"
+                            Background="Transparent"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource ThemeTextPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ThemeCardBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource ThemeTextPrimaryBrush}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter TargetName="border" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.1" Direction="270" />
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ==========================================================================
+         iOS 7 Slider Control (2px Hairline Track, 18px White Circular Thumb)
+         ========================================================================== -->
+    <Style x:Key="SliderThumbStyle" TargetType="Thumb">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Ellipse Fill="#FFFFFF" Stroke="{StaticResource ThemeHairlineBrush}" StrokeThickness="0.5">
+                        <Ellipse.Effect>
+                            <DropShadowEffect BlurRadius="4" ShadowDepth="1" Opacity="0.2" Direction="270" />
+                        </Ellipse.Effect>
+                    </Ellipse>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="IOS7SliderStyle" TargetType="Slider">
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid VerticalAlignment="Center">
+                        <!-- Background Track -->
+                        <Border Height="2" CornerRadius="1" Background="{StaticResource ThemeHairlineBrush}" VerticalAlignment="Center" />
+                        <!-- Thumb -->
+                        <Track x:Name="PART_Track">
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource SliderThumbStyle}" />
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>
