@@ -91,10 +91,25 @@
                     <TextBlock x:Name="TxtBrushSizeVal" Text="28px" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,20,0" Width="36" />
 
                     <TextBlock Text="OPACITY" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <Slider x:Name="SliderBrushOpacity" Minimum="1" Maximum="100" Value="100" Width="100" Style="{StaticResource IOS7SliderStyle}" ValueChanged="BrushOpacity_Changed" />
-                    <TextBlock x:Name="TxtBrushOpacityVal" Text="100%" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Width="36" />
-                    <TextBlock Text="COLOR" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="14,0,6,0" />
-                    <Border x:Name="ActiveColorIndicator" Width="20" Height="20" CornerRadius="10" Background="{StaticResource SystemBlueBrush}" BorderBrush="#50000000" BorderThickness="1" Cursor="Hand" MouseDown="PrimaryChip_MouseDown" ToolTip="Open Color Studio" VerticalAlignment="Center" />
+                    <Slider x:Name="SliderBrushOpacity" Minimum="1" Maximum="100" Value="100" Width="90" Style="{StaticResource IOS7SliderStyle}" ValueChanged="BrushOpacity_Changed" />
+                    <TextBlock x:Name="TxtBrushOpacityVal" Text="100%" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,16,0" Width="36" />
+
+                    <TextBlock Text="HARDNESS" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Slider x:Name="SliderBrushHardness" Minimum="0" Maximum="100" Value="50" Width="80" Style="{StaticResource IOS7SliderStyle}" ValueChanged="BrushHardness_Changed" />
+                    <TextBlock x:Name="TxtBrushHardnessVal" Text="50%" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,16,0" Width="36" />
+
+                    <TextBlock Text="COLOR" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource ThemeTextTertiaryBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <Border x:Name="ActiveColorIndicator" Width="20" Height="20" CornerRadius="10" Background="{StaticResource SystemBlueBrush}" BorderBrush="#50000000" BorderThickness="1" Cursor="Hand" MouseDown="PrimaryChip_MouseDown" ToolTip="Open Color Studio" VerticalAlignment="Center" Margin="0,0,16,0" />
+
+                    <!-- Quick Brush Presets -->
+                    <Border Background="#10767680" CornerRadius="6" Padding="2">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Pen" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="BrushPreset_Click" Tag="Pen" ToolTip="Ink Pen (Hard 100%, 6px)" />
+                            <Button Content="Pencil" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="BrushPreset_Click" Tag="Pencil" ToolTip="Pencil (Hard 80%, 12px)" />
+                            <Button Content="Brush" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="BrushPreset_Click" Tag="Brush" ToolTip="Standard Brush (Hard 50%, 28px)" />
+                            <Button Content="Airbrush" Style="{StaticResource IOS7BorderlessButtonStyle}" Click="BrushPreset_Click" Tag="Airbrush" ToolTip="Soft Airbrush (Hard 0%, 64px)" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Crop Options -->

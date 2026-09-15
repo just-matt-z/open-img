@@ -475,9 +475,10 @@ public partial class MainWindow : Window
                 int localY = (int)(pt.Y - _activeLayer.Y);
                 int size = (int)SliderBrushSize.Value;
                 double opacity = SliderBrushOpacity.Value / 100.0;
+                double hardness = SliderBrushHardness != null ? SliderBrushHardness.Value / 100.0 : 0.5;
                 bool isEraser = _activeTool == ToolType.Eraser;
 
-                DrawingEngine.DrawBrushStamp(_activeLayer.Bitmap, localX, localY, size / 2, _primaryColor, opacity, isEraser);
+                DrawingEngine.DrawBrushStamp(_activeLayer.Bitmap, localX, localY, size / 2, _primaryColor, opacity, isEraser, hardness);
                 RenderComposite();
             }
         }
@@ -572,9 +573,10 @@ public partial class MainWindow : Window
             Point localCurrent = new Point(pt.X - _activeLayer.X, pt.Y - _activeLayer.Y);
             int size = (int)SliderBrushSize.Value;
             double opacity = SliderBrushOpacity.Value / 100.0;
+            double hardness = SliderBrushHardness != null ? SliderBrushHardness.Value / 100.0 : 0.5;
             bool isEraser = _activeTool == ToolType.Eraser;
 
-            DrawingEngine.DrawBrushLine(_activeLayer.Bitmap, localLast, localCurrent, size / 2, _primaryColor, opacity, isEraser);
+            DrawingEngine.DrawBrushLine(_activeLayer.Bitmap, localLast, localCurrent, size / 2, _primaryColor, opacity, isEraser, hardness);
             _lastPoint = pt;
             RenderComposite();
         }
@@ -696,6 +698,41 @@ public partial class MainWindow : Window
     private void BrushOpacity_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (TxtBrushOpacityVal != null) TxtBrushOpacityVal.Text = $"{(int)e.NewValue}%";
+    }
+
+    private void BrushHardness_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (TxtBrushHardnessVal != null) TxtBrushHardnessVal.Text = $"{(int)e.NewValue}%";
+    }
+
+    private void BrushPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string preset)
+        {
+            switch (preset)
+            {
+                case "Pen":
+                    SliderBrushSize.Value = 6;
+                    SliderBrushHardness.Value = 100;
+                    SliderBrushOpacity.Value = 100;
+                    break;
+                case "Pencil":
+                    SliderBrushSize.Value = 12;
+                    SliderBrushHardness.Value = 80;
+                    SliderBrushOpacity.Value = 90;
+                    break;
+                case "Brush":
+                    SliderBrushSize.Value = 28;
+                    SliderBrushHardness.Value = 50;
+                    SliderBrushOpacity.Value = 100;
+                    break;
+                case "Airbrush":
+                    SliderBrushSize.Value = 64;
+                    SliderBrushHardness.Value = 0;
+                    SliderBrushOpacity.Value = 50;
+                    break;
+            }
+        }
     }
 
     private void PrimaryChip_MouseDown(object sender, MouseButtonEventArgs e)
