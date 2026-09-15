@@ -47,6 +47,10 @@ public partial class MainWindow : Window
     private Point _lastCloneSource = new Point(0, 0);
     private bool _hasCloneSource = false;
 
+    private GradientStyle _activeGradientStyle = GradientStyle.Linear;
+    private Color _gradientColor1 = Color.FromRgb(0, 122, 255);
+    private Color _gradientColor2 = Colors.White;
+
 
 
     public MainWindow()
@@ -469,6 +473,76 @@ public partial class MainWindow : Window
                 }
             }
         }
+
+        // 6. Interactive Gradient Drag Vector Overlay
+        if (_activeTool == ToolType.Gradient && _isInteracting && _currentCanvasMouse.HasValue)
+        {
+            Point p1 = _dragStart;
+            Point p2 = _currentCanvasMouse.Value;
+
+            if (_activeGradientStyle == GradientStyle.Linear)
+            {
+                var lineOuter = new System.Windows.Shapes.Line
+                {
+                    X1 = p1.X, Y1 = p1.Y, X2 = p2.X, Y2 = p2.Y,
+                    Stroke = Brushes.White, StrokeThickness = 3.0, IsHitTestVisible = false
+                };
+                var lineInner = new System.Windows.Shapes.Line
+                {
+                    X1 = p1.X, Y1 = p1.Y, X2 = p2.X, Y2 = p2.Y,
+                    Stroke = new SolidColorBrush(Color.FromRgb(0, 122, 255)), StrokeThickness = 1.5, IsHitTestVisible = false
+                };
+                OverlayCanvas.Children.Add(lineOuter);
+                OverlayCanvas.Children.Add(lineInner);
+            }
+            else
+            {
+                double dx = p2.X - p1.X;
+                double dy = p2.Y - p1.Y;
+                double radius = Math.Max(2.0, Math.Sqrt(dx * dx + dy * dy));
+
+                var circleOuter = new System.Windows.Shapes.Ellipse
+                {
+                    Width = radius * 2, Height = radius * 2,
+                    Stroke = Brushes.White, StrokeThickness = 2.0,
+                    StrokeDashArray = new DoubleCollection { 4, 3 },
+                    IsHitTestVisible = false
+                };
+                var circleInner = new System.Windows.Shapes.Ellipse
+                {
+                    Width = radius * 2, Height = radius * 2,
+                    Stroke = new SolidColorBrush(Color.FromRgb(0, 122, 255)), StrokeThickness = 1.0,
+                    StrokeDashArray = new DoubleCollection { 4, 3 },
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(circleOuter, p1.X - radius);
+                Canvas.SetTop(circleOuter, p1.Y - radius);
+                Canvas.SetLeft(circleInner, p1.X - radius);
+                Canvas.SetTop(circleInner, p1.Y - radius);
+                OverlayCanvas.Children.Add(circleOuter);
+                OverlayCanvas.Children.Add(circleInner);
+            }
+
+            var handleStart = new System.Windows.Shapes.Ellipse
+            {
+                Width = 12, Height = 12,
+                Fill = new SolidColorBrush(_gradientColor1),
+                Stroke = Brushes.White, StrokeThickness = 2.0, IsHitTestVisible = false
+            };
+            Canvas.SetLeft(handleStart, p1.X - 6);
+            Canvas.SetTop(handleStart, p1.Y - 6);
+            OverlayCanvas.Children.Add(handleStart);
+
+            var handleEnd = new System.Windows.Shapes.Ellipse
+            {
+                Width = 12, Height = 12,
+                Fill = new SolidColorBrush(_gradientColor2),
+                Stroke = Brushes.White, StrokeThickness = 2.0, IsHitTestVisible = false
+            };
+            Canvas.SetLeft(handleEnd, p2.X - 6);
+            Canvas.SetTop(handleEnd, p2.Y - 6);
+            OverlayCanvas.Children.Add(handleEnd);
+        }
     }
 
     private void CommitAction(string description)
@@ -652,6 +726,10 @@ public partial class MainWindow : Window
                 RenderComposite();
             }
         }
+        else if (_activeTool == ToolType.Gradient)
+        {
+            UpdateOverlays(pt);
+        }
     }
 
     private void Canvas_MouseMove(object sender, MouseEventArgs e)
@@ -779,6 +857,37 @@ public partial class MainWindow : Window
             _activeLayer?.UpdateThumbnail();
             CommitAction("Clone Stamp");
         }
+        else if (_activeTool == ToolType.Gradient)
+        {
+            Point pEnd = e.GetPosition(ImgComposite);
+            double dist = Math.Sqrt(Math.Pow(pEnd.X - _dragStart.X, 2) + Math.Pow(pEnd.Y - _dragStart.Y, 2));
+            if (dist >= 3 && _activeLayer != null && _activeLayer.Type == LayerType.Raster && !_activeLayer.IsLocked && _activeLayer.Bitmap != null)
+            {
+                Point localP1 = new Point(_dragStart.X - _activeLayer.X, _dragStart.Y - _activeLayer.Y);
+                Point localP2 = new Point(pEnd.X - _activeLayer.X, pEnd.Y - _activeLayer.Y);
+
+                Rect? localClip = null;
+                if (_hasSelection && !_selectionRect.IsEmpty)
+                {
+                    localClip = new Rect(_selectionRect.X - _activeLayer.X, _selectionRect.Y - _activeLayer.Y, _selectionRect.Width, _selectionRect.Height);
+                }
+
+                double opacity = SliderGradientOpacity != null ? SliderGradientOpacity.Value / 100.0 : 1.0;
+
+                if (_activeGradientStyle == GradientStyle.Linear)
+                {
+                    DrawingEngine.DrawLinearGradient(_activeLayer.Bitmap, localP1, localP2, _gradientColor1, _gradientColor2, localClip, opacity);
+                }
+                else
+                {
+                    DrawingEngine.DrawRadialGradient(_activeLayer.Bitmap, localP1, localP2, _gradientColor1, _gradientColor2, localClip, opacity);
+                }
+
+                _activeLayer.UpdateThumbnail();
+                CommitAction($"Render {(_activeGradientStyle == GradientStyle.Linear ? "Linear" : "Radial")} Gradient");
+            }
+            UpdateOverlays();
+        }
         else if (_activeTool == ToolType.Select)
         {
             CommitAction("Move Layer");
@@ -835,10 +944,15 @@ public partial class MainWindow : Window
             OptionsCrop.Visibility = tool == ToolType.Crop ? Visibility.Visible : Visibility.Collapsed;
             OptionsMarquee.Visibility = tool == ToolType.Marquee ? Visibility.Visible : Visibility.Collapsed;
             OptionsCloneStamp.Visibility = tool == ToolType.CloneStamp ? Visibility.Visible : Visibility.Collapsed;
+            OptionsGradient.Visibility = tool == ToolType.Gradient ? Visibility.Visible : Visibility.Collapsed;
 
             if (tool == ToolType.CloneStamp)
             {
                 TxtStatusMessage.Text = _hasCloneSource ? "Clone Stamp: Drag to paint sampled pixels. Alt+Click to re-sample." : "Clone Stamp: Hold Alt and Click canvas to sample source point.";
+            }
+            else if (tool == ToolType.Gradient)
+            {
+                TxtStatusMessage.Text = "Gradient Tool: Click and drag across canvas to render gradient.";
             }
 
             if (tool == ToolType.Crop && (_cropRect.IsEmpty || _cropRect.Width == 0))
@@ -847,6 +961,65 @@ public partial class MainWindow : Window
             }
             UpdateOverlays();
         }
+    }
+
+    private void GradientType_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton rb && Enum.TryParse(rb.Tag?.ToString(), out GradientStyle style))
+        {
+            _activeGradientStyle = style;
+        }
+    }
+
+    private void GradientReverse_Click(object sender, RoutedEventArgs e)
+    {
+        var temp = _gradientColor1;
+        _gradientColor1 = _gradientColor2;
+        _gradientColor2 = temp;
+        UpdateGradientPreview();
+    }
+
+    private void GradientOpacity_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (TxtGradientOpacityVal != null) TxtGradientOpacityVal.Text = $"{(int)e.NewValue}%";
+    }
+
+    private void GradientPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string preset)
+        {
+            switch (preset)
+            {
+                case "Sunrise":
+                    _gradientColor1 = Color.FromRgb(255, 45, 85);  // System Pink
+                    _gradientColor2 = Color.FromRgb(255, 149, 0); // System Orange
+                    break;
+                case "Ocean":
+                    _gradientColor1 = Color.FromRgb(0, 122, 255);  // System Blue
+                    _gradientColor2 = Color.FromRgb(90, 200, 250); // System Teal
+                    break;
+                case "Sunset":
+                    _gradientColor1 = Color.FromRgb(88, 86, 214);  // System Purple
+                    _gradientColor2 = Color.FromRgb(255, 45, 85);  // System Pink
+                    break;
+                case "Lime":
+                    _gradientColor1 = Color.FromRgb(52, 199, 89);  // System Green
+                    _gradientColor2 = Color.FromRgb(205, 220, 57); // Lime
+                    break;
+            }
+            _primaryColor = _gradientColor1;
+            _secondaryColor = _gradientColor2;
+            ChipPrimary.Background = new SolidColorBrush(_primaryColor);
+            ChipSecondary.Background = new SolidColorBrush(_secondaryColor);
+            if (ActiveColorIndicator != null) ActiveColorIndicator.Background = new SolidColorBrush(_primaryColor);
+            UpdateGradientPreview();
+        }
+    }
+
+    private void UpdateGradientPreview()
+    {
+        if (GradStop1 != null) GradStop1.Color = _gradientColor1;
+        if (GradStop2 != null) GradStop2.Color = _gradientColor2;
     }
 
     private void CloneSize_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -917,8 +1090,10 @@ public partial class MainWindow : Window
         if (dlg.ShowDialog() == true)
         {
             _primaryColor = dlg.SelectedColor;
+            _gradientColor1 = _primaryColor;
             ChipPrimary.Background = new SolidColorBrush(_primaryColor);
             if (ActiveColorIndicator != null) ActiveColorIndicator.Background = new SolidColorBrush(_primaryColor);
+            UpdateGradientPreview();
         }
     }
 
@@ -928,7 +1103,9 @@ public partial class MainWindow : Window
         if (dlg.ShowDialog() == true)
         {
             _secondaryColor = dlg.SelectedColor;
+            _gradientColor2 = _secondaryColor;
             ChipSecondary.Background = new SolidColorBrush(_secondaryColor);
+            UpdateGradientPreview();
         }
     }
 
@@ -938,9 +1115,12 @@ public partial class MainWindow : Window
         var temp = _primaryColor;
         _primaryColor = _secondaryColor;
         _secondaryColor = temp;
+        _gradientColor1 = _primaryColor;
+        _gradientColor2 = _secondaryColor;
         ChipPrimary.Background = new SolidColorBrush(_primaryColor);
         ChipSecondary.Background = new SolidColorBrush(_secondaryColor);
         if (ActiveColorIndicator != null) ActiveColorIndicator.Background = new SolidColorBrush(_primaryColor);
+        UpdateGradientPreview();
     }
 
     // =========================================================================
@@ -1702,7 +1882,8 @@ public partial class MainWindow : Window
         else if (e.Key == Key.B) { ToolBrush.IsChecked = true; Tool_Changed(ToolBrush, null!); }
         else if (e.Key == Key.E) { ToolEraser.IsChecked = true; Tool_Changed(ToolEraser, null!); }
         else if (e.Key == Key.S) { ToolCloneStamp.IsChecked = true; Tool_Changed(ToolCloneStamp, null!); }
-        else if (e.Key == Key.G) { ToolFill.IsChecked = true; Tool_Changed(ToolFill, null!); }
+        else if (e.Key == Key.G) { ToolGradient.IsChecked = true; Tool_Changed(ToolGradient, null!); }
+        else if (e.Key == Key.K) { ToolFill.IsChecked = true; Tool_Changed(ToolFill, null!); }
         else if (e.Key == Key.T) { ToolText.IsChecked = true; Tool_Changed(ToolText, null!); }
         else if (e.Key == Key.U) { ToolShape.IsChecked = true; Tool_Changed(ToolShape, null!); }
         else if (e.Key == Key.I) { ToolEyedropper.IsChecked = true; Tool_Changed(ToolEyedropper, null!); }

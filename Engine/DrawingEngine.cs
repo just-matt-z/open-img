@@ -389,4 +389,164 @@ public static class DrawingEngine
             bmp.Unlock();
         }
     }
+
+    /// <summary>
+    /// Renders a smooth two-color linear gradient along a vector onto a WriteableBitmap with optional selection clipping
+    /// </summary>
+    public static unsafe void DrawLinearGradient(WriteableBitmap bmp, Point p1, Point p2, Color startColor, Color endColor, Rect? clipRect = null, double opacity = 1.0)
+    {
+        if (bmp == null) return;
+        int width = bmp.PixelWidth;
+        int height = bmp.PixelHeight;
+
+        int minX = 0, minY = 0, maxX = width - 1, maxY = height - 1;
+        if (clipRect.HasValue && !clipRect.Value.IsEmpty)
+        {
+            minX = Math.Clamp((int)Math.Floor(clipRect.Value.Left), 0, width - 1);
+            maxX = Math.Clamp((int)Math.Ceiling(clipRect.Value.Right), 0, width - 1);
+            minY = Math.Clamp((int)Math.Floor(clipRect.Value.Top), 0, height - 1);
+            maxY = Math.Clamp((int)Math.Ceiling(clipRect.Value.Bottom), 0, height - 1);
+        }
+
+        if (minX > maxX || minY > maxY) return;
+
+        double dx = p2.X - p1.X;
+        double dy = p2.Y - p1.Y;
+        double lenSq = dx * dx + dy * dy;
+
+        float alphaFactor = (float)Math.Clamp(opacity, 0.0, 1.0);
+
+        bmp.Lock();
+        try
+        {
+            byte* scan0 = (byte*)bmp.BackBuffer;
+            int stride = bmp.BackBufferStride;
+
+            for (int y = minY; y <= maxY; y++)
+            {
+                byte* row = scan0 + (y * stride);
+                double vy = y - p1.Y;
+
+                for (int x = minX; x <= maxX; x++)
+                {
+                    double vx = x - p1.X;
+                    float t = lenSq > 0.001 ? (float)Math.Clamp((vx * dx + vy * dy) / lenSq, 0.0, 1.0) : 0.0f;
+
+                    float r = startColor.R + t * (endColor.R - startColor.R);
+                    float g = startColor.G + t * (endColor.G - startColor.G);
+                    float b = startColor.B + t * (endColor.B - startColor.B);
+                    float a = (startColor.A + t * (endColor.A - startColor.A)) * alphaFactor;
+
+                    byte* pixel = row + (x * 4);
+                    float srcAlpha = a / 255.0f;
+
+                    if (srcAlpha >= 0.999f)
+                    {
+                        pixel[0] = (byte)Math.Clamp(b, 0, 255);
+                        pixel[1] = (byte)Math.Clamp(g, 0, 255);
+                        pixel[2] = (byte)Math.Clamp(r, 0, 255);
+                        pixel[3] = 255;
+                    }
+                    else if (srcAlpha > 0.001f)
+                    {
+                        float dstAlpha = (pixel[3] / 255.0f) * (1.0f - srcAlpha);
+                        float outAlpha = srcAlpha + dstAlpha;
+                        if (outAlpha > 0.0001f)
+                        {
+                            pixel[0] = (byte)Math.Clamp((b * srcAlpha + pixel[0] * dstAlpha) / outAlpha, 0, 255);
+                            pixel[1] = (byte)Math.Clamp((g * srcAlpha + pixel[1] * dstAlpha) / outAlpha, 0, 255);
+                            pixel[2] = (byte)Math.Clamp((r * srcAlpha + pixel[2] * dstAlpha) / outAlpha, 0, 255);
+                            pixel[3] = (byte)Math.Clamp(outAlpha * 255, 0, 255);
+                        }
+                    }
+                }
+            }
+
+            bmp.AddDirtyRect(new Int32Rect(minX, minY, maxX - minX + 1, maxY - minY + 1));
+        }
+        finally
+        {
+            bmp.Unlock();
+        }
+    }
+
+    /// <summary>
+    /// Renders a smooth two-color radial gradient from center to outer radius onto a WriteableBitmap with optional selection clipping
+    /// </summary>
+    public static unsafe void DrawRadialGradient(WriteableBitmap bmp, Point center, Point edgePoint, Color innerColor, Color outerColor, Rect? clipRect = null, double opacity = 1.0)
+    {
+        if (bmp == null) return;
+        int width = bmp.PixelWidth;
+        int height = bmp.PixelHeight;
+
+        int minX = 0, minY = 0, maxX = width - 1, maxY = height - 1;
+        if (clipRect.HasValue && !clipRect.Value.IsEmpty)
+        {
+            minX = Math.Clamp((int)Math.Floor(clipRect.Value.Left), 0, width - 1);
+            maxX = Math.Clamp((int)Math.Ceiling(clipRect.Value.Right), 0, width - 1);
+            minY = Math.Clamp((int)Math.Floor(clipRect.Value.Top), 0, height - 1);
+            maxY = Math.Clamp((int)Math.Ceiling(clipRect.Value.Bottom), 0, height - 1);
+        }
+
+        if (minX > maxX || minY > maxY) return;
+
+        double dx = edgePoint.X - center.X;
+        double dy = edgePoint.Y - center.Y;
+        float radius = Math.Max(1.0f, (float)Math.Sqrt(dx * dx + dy * dy));
+        float alphaFactor = (float)Math.Clamp(opacity, 0.0, 1.0);
+
+        bmp.Lock();
+        try
+        {
+            byte* scan0 = (byte*)bmp.BackBuffer;
+            int stride = bmp.BackBufferStride;
+
+            for (int y = minY; y <= maxY; y++)
+            {
+                byte* row = scan0 + (y * stride);
+                double vy = y - center.Y;
+
+                for (int x = minX; x <= maxX; x++)
+                {
+                    double vx = x - center.X;
+                    float dist = (float)Math.Sqrt(vx * vx + vy * vy);
+                    float t = Math.Clamp(dist / radius, 0.0f, 1.0f);
+
+                    float r = innerColor.R + t * (outerColor.R - innerColor.R);
+                    float g = innerColor.G + t * (outerColor.G - innerColor.G);
+                    float b = innerColor.B + t * (outerColor.B - innerColor.B);
+                    float a = (innerColor.A + t * (outerColor.A - innerColor.A)) * alphaFactor;
+
+                    byte* pixel = row + (x * 4);
+                    float srcAlpha = a / 255.0f;
+
+                    if (srcAlpha >= 0.999f)
+                    {
+                        pixel[0] = (byte)Math.Clamp(b, 0, 255);
+                        pixel[1] = (byte)Math.Clamp(g, 0, 255);
+                        pixel[2] = (byte)Math.Clamp(r, 0, 255);
+                        pixel[3] = 255;
+                    }
+                    else if (srcAlpha > 0.001f)
+                    {
+                        float dstAlpha = (pixel[3] / 255.0f) * (1.0f - srcAlpha);
+                        float outAlpha = srcAlpha + dstAlpha;
+                        if (outAlpha > 0.0001f)
+                        {
+                            pixel[0] = (byte)Math.Clamp((b * srcAlpha + pixel[0] * dstAlpha) / outAlpha, 0, 255);
+                            pixel[1] = (byte)Math.Clamp((g * srcAlpha + pixel[1] * dstAlpha) / outAlpha, 0, 255);
+                            pixel[2] = (byte)Math.Clamp((r * srcAlpha + pixel[2] * dstAlpha) / outAlpha, 0, 255);
+                            pixel[3] = (byte)Math.Clamp(outAlpha * 255, 0, 255);
+                        }
+                    }
+                }
+            }
+
+            bmp.AddDirtyRect(new Int32Rect(minX, minY, maxX - minX + 1, maxY - minY + 1));
+        }
+        finally
+        {
+            bmp.Unlock();
+        }
+    }
 }
